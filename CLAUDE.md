@@ -44,6 +44,22 @@ OpenRCA Bank 数据集位于 `data/OpenRCA/Bank/`：
 - 配置通过 YAML 文件管理，敏感信息用环境变量
 - VLM/LLM 调用使用 OpenAI API 兼容接口
 
+### 临时代码执行规范
+
+跑临时 Python 代码时，**禁止使用 heredoc**（`uv run python - <<'PY'`），因为权限规则 `Bash(uv run python -c *)` 不匹配 heredoc 语法。必须使用以下两种方式之一：
+
+```bash
+# 方式一：-c 单行（推荐，匹配 Bash(uv run python -c *)）
+uv run python -c "import foo; print(bar)"
+
+# 方式二：写临时文件（匹配 Bash(uv run *)）
+cat > tmp/test_script.py <<'EOF'
+import foo
+print(bar)
+EOF
+uv run python tmp/test_script.py
+```
+
 ## Worktree 开发规范
 
 修复问题或开发新功能时，**必须**使用 git worktree 从 `main` 创建隔离分支，禁止直接在 `main` 上修改。

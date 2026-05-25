@@ -30,9 +30,16 @@ outputs/
 logs/
 *.log
 
-# Data (keep symlinks, ignore large files)
-data/OpenRCA/Bank/cases/
-data/OpenRCA/Bank/telemetry/
+# Data (keep directory structure via .gitkeep and symlinks, ignore actual data files)
+data/*
+!data/.gitkeep
+!data/OpenRCA
+data/OpenRCA/*
+!data/OpenRCA/.gitkeep
+!data/OpenRCA/Bank
+
+# Tmp
+tmp/
 
 # Environment
 .env
