@@ -1,0 +1,18 @@
+# VLM4RCA 默认配置
+
+data:
+  dataset_path: "data/OpenRCA/Bank"
+  cases_dir: "cases"
+
+model:
+  vlm:
+    base_url: "http://localhost:8000/v1"
+    model: "gpt-4o"
+    api_key_env: "OPENAI_API_KEY"
+  llm:
+    base_url: "http://localhost:8000/v1"
+    model: "gpt-4o"
+    api_key_env: "OPENAI_API_KEY"
+
+output:
+  dir: "outputs"
