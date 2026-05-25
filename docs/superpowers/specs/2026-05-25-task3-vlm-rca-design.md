@@ -45,7 +45,16 @@ Text-only baseline 不使用图像和 VLM。它复用同一 Candidate Provider�
 
 ### 3.3 Deterministic Text-Summary Baseline
 
-为避免把 VLM 增益误解为“更好的文本摘要”，第一版增加一个 deterministic text-summary baseline。它从同一批 selected metrics 中用程序生成与 VLM observations 尽量同构的事实摘要，例如 pattern、direction、time_relation_to_fault、duration_pattern。该 baseline 用于比较“程序化事实抽取”与“VLM 视觉事实抽取”。
+为避免把 VLM 增益误解为“更好的文本摘要”，第一版增加一个 deterministic text-summary baseline。它从同一批 selected metrics 中用程序生成与 VLM observations 共享核心枚举字段的事实摘要，并映射为同构 `ObservationEvidence`。该 baseline 用于比较“程序化事实抽取”与“VLM 视觉事实抽取”。
+
+程序化字段判定使用固定规则：
+
+- `direction`: 比较 fault/post 窗口与 baseline 窗口的中位数或 p95。默认 robust threshold 为 `3.0 * 1.4826 * MAD_baseline`，低方差序列使用 `epsilon` guard。超过阈值时标记为 `increase` 或 `decrease`，否则为 `none`。
+- `pattern_type`: 根据阈值越界点的形态标记为 `spike`、`step_increase`、`step_decrease`、`gradual_increase`、`gradual_decrease`、`oscillation`、`flatline`、`missing_data` 或 `no_visible_change`。
+- `time_relation_to_fault`: 第一次明显变化相对 fault time 的位置，标记为 `before_fault`、`at_fault`、`after_fault`、`spans_fault` 或 `unclear`。
+- `duration_pattern`: 根据连续越界样本数标记为 `transient`、`sustained`、`intermittent`、`periodic`、`single_point` 或 `unknown`。
+
+这些规则不用于最终裁决，只用于生成与 VLM facts 可比较的结构化事实。
 
 ### 3.4 Oracle and Heuristic Candidate Settings
 
@@ -57,6 +66,38 @@ Text-only baseline 不使用图像和 VLM。它复用同一 Candidate Provider�
 `oracle` 候选生成属于实验 harness 的特权步骤。它可以读取 `EvaluationLabelBundle` 来构造 `CandidateSet`，但构造完成后，下游 Metric Selector、Figure Builder、VLM、Trace/Log Context Builder 和 RCA Judge 只能看到候选组件列表及 `is_oracle` 标记，不能看到 ground truth、reason label 或 evidence annotations。
 
 评估报告中 oracle 和 heuristic 必须分表。heuristic 结果额外报告 candidate recall 上限、候选集大小和候选为空比例。若真因不在 heuristic 候选集中，该 case 的 Judge 不可能 Correct。
+
+### 3.5 Reason Label Taxonomy and Aliases
+
+Judge 的 `reason_label` 来自版本化的封闭 taxonomy。第一版使用一个生成后可人工审阅的 label catalog，来源优先级如下：
+
+1. OpenRCA task_3 的全局评分说明或任务定义中出现的合法原因标签。
+2. `record.csv` 和 `case_meta.json` 中根因记录的 unique reason/cause 字段，用于补全数据集中实际出现的标签集合。
+3. 手工维护的通用 SRE category 映射，例如 latency、cpu、memory、disk、network、error、traffic。
+
+Taxonomy 构建是数据集级预处理步骤，只产出“可能的标签集合”和 alias 映射，不产出 case 到标签的映射。运行单个 case 时，RCA Judge 只能看到 taxonomy 全表和候选组件，不能看到该 case 的 ground truth label。
+
+每个 reason label 使用稳定 canonical id，例如 lowercase snake_case。Alias mapping 来自三类来源：
+
+- 数据集中原始 reason/cause 字符串的规范化结果。
+- task_3 评分说明中的同义表达。
+- 人工维护的 alias YAML。
+
+Alias 变更必须版本化，并有 evaluator golden regression test 覆盖。Sidecar 记录 taxonomy version、alias version 和 label mapping hash。
+
+### 3.6 Heuristic Candidate Seed Algorithm
+
+Heuristic Candidate Provider 第一版使用固定的可复现 seed 规则，不在实现阶段自由发挥：
+
+1. 从 metrics 宽表列名中解析 `(component, metric_name)`。默认按 `组件__指标名` 分割，解析失败的列进入 unknown component/metric namespace 并记录 warning。
+2. 复用专家槽位规则将每个 metric 归入 latency、traffic、error、cpu、memory、disk、network 或 unknown。
+3. 对每个 metric 计算窗口差异分数：baseline 与 fault/post 窗口的 robust median shift、p95 shift 和持续越界比例，取最大值作为 `metric_anomaly_score`。robust shift 使用 `abs(stat_fault_or_post - stat_baseline) / (1.4826 * MAD_baseline + epsilon)`；持续越界比例使用 baseline median ± `3.0 * 1.4826 * MAD_baseline`。分数只用于候选排序和选图，不作为 RCA 裁决证据。
+4. 每个 component 的类别分数取该类别 top 1-2 metric 分数的最大值。
+5. Component score 取类别分数的加权最大值，默认权重为 latency/error 1.2、cpu/memory/disk/network 1.0、traffic 0.8、unknown 0.6。
+6. 输出 top `candidate_top_k` 个组件，默认 `candidate_top_k=5`。若所有 component score 低于 `low_signal_threshold=1.0`，仍输出 top-k 但记录 `low_signal_candidates=true`；只有完全无可解析指标时才输出空候选。
+7. Tie-break 固定为 component score 降序、最高优先级类别、canonical component 名字典序。
+
+这些规则是第一版 heuristic baseline，不声明为最优候选算法。后续可以通过消融替换为随机候选、仅专家槽位候选或弱统计候选。
 
 ## 4. Architecture
 
@@ -73,7 +114,7 @@ Adapter 输出两个分离对象：
 
 ### 4.2 Candidate Provider
 
-负责生成 `CandidateSet`。支持 `oracle` 和 `heuristic` 模式。输出必须记录候选来源、排序、去重、别名归一化和 oracle 标记。
+负责生成 `CandidateSet`。支持 `oracle` 和 `heuristic` 模式。输出必须记录候选来源、排序、去重、别名归一化和 oracle 标记。Heuristic 模式必须实现 §3.6 的 seed algorithm，并把 score、category contribution 和 low-signal 标记写入 sidecar。
 
 ### 4.3 Metric Selector
 
@@ -85,6 +126,8 @@ Adapter 输出两个分离对象：
 4. 某类无专家槽位命中时，从 unknown 或该类剩余指标中按统计异常补充。
 5. 每个候选组件每类最多 1-3 个代表指标。
 6. 图像预算控制在 VLM 稳定处理范围内。
+
+专家槽位优先级基于通用 SRE 排障经验：尾延迟优先于平均值，比例型错误优先于原始计数，资源利用率优先于低层吞吐计数。该优先级是版本化配置；变更必须带 metric selector regression test。
 
 专家槽位优先级：
 
@@ -103,9 +146,17 @@ Adapter 输出两个分离对象：
 - 1 张候选组件横向对比图。
 - 最多 3 张 top 组件细节图。
 
+图像数量和 panel 数量分开控制。第一版默认 `max_images=4`、`max_panels_per_image=6`、`max_total_panels=18`。Metric Selector 可以选出多于 18 个候选指标，但 Figure Builder 只绘制 Figure Planner 选中的指标：
+
+1. 覆盖最多 top 3 candidate components。
+2. 每个组件优先保留 latency/error 槽位中的最高优先级指标。
+3. 剩余 panel 给该组件最高异常分数的资源类指标。
+4. Tie-break 使用类别优先级、异常分数、`metric_id` 字典序。
+5. 未入图指标仍保存在 `selected_metric_set` 和 `metric_summary` 中，可供 text-only baseline 使用。
+
 第一版默认一个 panel 只画一个代表指标。每个 panel 必须有稳定 `panel_id`，并能追溯到唯一 `metric_id`。如果后续允许多曲线 panel，必须引入 `series_id`、`legend_label`、`color`，且 VLM 只能引用 manifest 中存在的 id。
 
-图中需要清晰标记组件名、指标名、时间窗口和故障时间参考线。图像设计的目标是帮助 VLM 读取曲线结构，而不是在图中塞入自然语言解释。
+图中需要清晰标记组件名、指标名、时间窗口和故障时间参考线。时间轴默认使用相对时间，`x=0` 表示 fault time，刻度用 “minutes before/after fault” 或等价相对单位。绝对时间戳只保存在 manifest/sidecar 中，不作为图上主要读数。图像设计的目标是帮助 VLM 读取曲线结构，而不是在图中塞入自然语言解释。
 
 ### 4.5 VLM Observation Extractor
 
@@ -125,13 +176,12 @@ LLM 是最终裁决者，但只能在给定候选组件和封闭 reason label ta
 
 - `CandidateSet`
 - `MetricSummary`
-- 主流程额外包含 `VlmObservation`
-- deterministic baseline 包含程序化 observations
+- `ObservationEvidence`
 - `TraceContext` / `LogContext`
 - label mapping
 - reason label taxonomy
 
-Judge 输出排序列表，每个预测必须引用已有证据 id。`rationale` 只能解释这些引用，不允许引入输入中没有的新事实。
+`ObservationEvidence` 在 VLM 主流程中由 `VlmObservation` 映射而来，在 deterministic baseline 中由 `MetricSummary` 的程序化事实字段映射而来。Judge 输出排序列表，每个预测必须引用已有证据 id。`rationale` 只能解释这些引用，不允许引入输入中没有的新事实。
 
 ### 4.8 Evaluator / Reporter
 
@@ -183,7 +233,20 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 - `selection_reason`
 - `is_oracle`
 
-### 5.4 TimeWindowSpec
+### 5.4 ReasonLabelTaxonomy
+
+封闭原因标签空间。字段：
+
+- `taxonomy_version`
+- `reason_labels`: canonical reason label list
+- `sre_category_mapping`: reason label 到通用 SRE category 的映射
+- `alias_map`: raw label / synonym 到 canonical reason label 的映射
+- `source_refs`: record/query/config 来源引用
+- `mapping_hash`
+
+RCA Judge 只能输出 `reason_labels` 中存在的 canonical label。
+
+### 5.5 TimeWindowSpec
 
 统一时间窗口定义：
 
@@ -197,7 +260,7 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 
 图像、metric summary 和 VLM `time_relation_to_fault` 都引用同一个窗口定义。
 
-### 5.5 SelectedMetricSet
+### 5.6 SelectedMetricSet
 
 每个 selected metric 包含：
 
@@ -216,7 +279,7 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 
 异常分数、丢弃指标和 tie-break 细节只进入 debug sidecar。
 
-### 5.6 FigureManifest
+### 5.7 FigureManifest
 
 字段：
 
@@ -235,7 +298,7 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 - `time_window`
 - layout reference
 
-### 5.7 VlmObservation
+### 5.8 VlmObservation
 
 严格事实 schema。字段：
 
@@ -249,23 +312,55 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 - `duration_pattern`
 - `readability_status`
 
-字段尽量使用枚举。禁止字段或语义包括 `confidence`、`root_cause`、`reason`、`statistical_support`、`culprit`、`likely`、`because`、`caused_by`、`primary`。解析层发现禁用字段或因果表达时重试或拒收。
+`observation_id` 格式为 `vlmobs:{case_id}:{image_id}:{panel_id}:{index}`。同一 panel 可以有多个 observation，但每个 observation 必须引用 manifest 中存在的 `panel_id`。
 
-### 5.8 MetricSummary
+字段使用封闭枚举：
+
+- `pattern_type`: `stable`, `spike`, `drop`, `step_increase`, `step_decrease`, `gradual_increase`, `gradual_decrease`, `oscillation`, `level_shift`, `missing_data`, `flatline`, `no_visible_change`, `unknown`
+- `direction`: `increase`, `decrease`, `mixed`, `none`, `unknown`
+- `time_relation_to_fault`: `before_fault`, `at_fault`, `after_fault`, `spans_fault`, `unrelated_to_fault_window`, `unclear`
+- `duration_pattern`: `transient`, `sustained`, `intermittent`, `periodic`, `single_point`, `unknown`
+- `readability_status`: `readable`, `partially_readable`, `unreadable`, `axis_unclear`, `legend_unclear`, `overplotted`, `low_resolution`
+
+禁止字段或语义包括 `confidence`、`root_cause`、`reason`、`statistical_support`、`culprit`、`likely`、`because`、`caused_by`、`primary`。解析层发现禁用字段或因果表达时重试或拒收。
+
+### 5.9 MetricSummary
 
 程序生成的结构化事实摘要，用于 text-only baseline 和公平对照。字段：
 
 - `metric_summary_id`
 - `metric_id`
 - `component_id`
-- pre/fault/post window summaries
-- `shape_label`
+- `baseline_window_summary`
+- `fault_window_summary`
+- `post_window_summary`
+- `pattern_type`
 - `direction`
 - `time_relation_to_fault`
+- `duration_pattern`
+- `summary_method`
+- `summary_warnings`
 
-`MetricSummary` 应尽量与 `VlmObservation` 同构，以便比较视觉事实抽取和程序化事实抽取。
+`metric_summary_id` 格式为 `ms:{case_id}:{metric_id}`。`pattern_type`、`direction`、`time_relation_to_fault`、`duration_pattern` 与 `VlmObservation` 使用同一套枚举。
 
-### 5.9 TraceContext and LogContext
+### 5.10 ObservationEvidence
+
+RCA Judge 的 evidence block 使用统一的 `ObservationEvidence`，避免因 prompt 字段差异引入 baseline 混杂。VLM 主流程和 deterministic baseline 都先映射成这个结构：
+
+- `observation_evidence_id`
+- `source_type`: `vlm` or `deterministic_text`
+- `component_id`
+- `metric_id`
+- `pattern_type`
+- `direction`
+- `time_relation_to_fault`
+- `duration_pattern`
+- `source_ref`: VLM 使用 `observation_id`，deterministic 使用 `metric_summary_id`
+- `readability_status`: VLM 填写枚举值，deterministic 固定为 `not_applicable`
+
+`ObservationEvidence.readability_status` 的取值为 `VlmObservation.readability_status` 枚举加 `not_applicable`。Judge prompt 面向 `ObservationEvidence`，因此主流程与 deterministic baseline 的字段名和枚举一致。原始 `VlmObservation` 和 `MetricSummary` 仍写入 sidecar 供审计。
+
+### 5.11 TraceContext and LogContext
 
 `TraceContext` 使用事实字段：
 
@@ -286,7 +381,7 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 - count change
 - short sanitized summary
 
-### 5.10 RcaPrediction
+### 5.12 RcaPrediction
 
 最终排序项：
 
@@ -296,23 +391,25 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 - `sre_category`
 - `reason_label`
 - `metric_summary_ids`
-- `vlm_observation_ids`
+- `observation_evidence_ids`
 - `trace_edge_ids`
 - `log_event_ids`
 - `rationale`
 
 `candidate_id` 必须来自 `CandidateSet`，`reason_label` 必须来自封闭 taxonomy。
 
-### 5.11 Sidecar
+### 5.13 Sidecar
 
 默认 `analysis` 级别保存：
 
 - `run_metadata`: commit, config hash, dataset version, model id, schema version, temperature, seed or seed support note
 - `candidate_set`
+- `reason_label_taxonomy`
 - `selected_metric_set`
 - `figure_manifest`
 - `vlm_observations`
 - `metric_summary`
+- `observation_evidence`
 - `trace_context`
 - `log_context`
 - `label_mapping`
@@ -332,7 +429,13 @@ Candidate Provider 输出。每个 `CandidateComponent` 包含：
 
 sidecar 记录模板 id、schema version、model id、temperature、seed 或 provider 不支持 seed 的说明。
 
-VLM prompt 只要求报告图像可见事实。RCA Judge prompt 要求在候选集合和标签空间内输出排序，并引用输入中的 evidence ids。主流程、text-only baseline 和 deterministic text-summary baseline 尽量共用同一个 Judge prompt，差异只体现在 evidence block 是否包含 VLM observations 或 deterministic observations。
+VLM prompt 只要求报告图像可见事实。RCA Judge prompt 要求在候选集合和标签空间内输出排序，并引用输入中的 evidence ids。主流程、text-only baseline 和 deterministic text-summary baseline 共用同一个 Judge prompt：
+
+- VLM 主流程提供 `ObservationEvidence`，其中 `source_type=vlm`。
+- Deterministic text-summary baseline 提供同构 `ObservationEvidence`，其中 `source_type=deterministic_text`。
+- Text-only baseline 不提供 observation evidence，只提供 `MetricSummary`、trace/log context、候选和 taxonomy。
+
+除 evidence block 内容外，Judge 的候选、标签空间、prompt 模板和解码参数保持一致。
 
 模型参数固定为低随机性，例如 temperature 0 或接近 0。
 
@@ -345,6 +448,8 @@ Canonical prediction item 定义为：
 ```
 
 OpenRCA Correct / Partial 和 top-k 都基于同一个 canonical item 和同一套别名映射计算。
+
+Evaluator 使用 §3.5 的 versioned alias mapping 将 raw prediction、dataset labels 和 accepted aliases 归一化为 canonical item。Alias mapping 不在评估时动态学习；任何 alias 变更都必须生成新的 mapping hash 并重新跑 evaluator golden tests。
 
 指标：
 
@@ -379,7 +484,7 @@ OpenRCA Correct / Partial 和 top-k 都基于同一个 canonical item 和同一�
 
 ### 8.4 Figure Errors
 
-图像预算最多 4 张。每个 panel 必须追溯到一个 metric。图像生成失败时标记该 image `failed`，VLM 不处理该图。如果所有图失败，主流程降级为空 VLM observations，但仍可运行 metric summary baseline。
+图像预算最多 4 张，并同时受 `max_panels_per_image` 和 `max_total_panels` 限制。每个 panel 必须追溯到一个 metric。图像生成失败时标记该 image `failed`，VLM 不处理该图。如果所有图失败，主流程降级为空 VLM observations，但仍可运行 metric summary baseline。
 
 ### 8.5 VLM Parse Errors
 
@@ -387,7 +492,7 @@ OpenRCA Correct / Partial 和 top-k 都基于同一个 canonical item 和同一�
 
 ### 8.6 Trace/Log Errors
 
-trace/log 缺失时输出空 context。上下文超长时按固定 cap 截断，并记录 omitted count。
+trace/log 缺失时输出空 context。上下文超长时按固定 cap 截断，并记录 omitted count。泄漏过滤需要覆盖大小写、snake_case、camelCase 和常见变体，例如 `rootCause`、`root_cause`、`suspected_component`、`affected_by`、`culprit`、`injected_fault`、`fault_type`。
 
 ### 8.7 Judge Parse Errors
 
@@ -399,19 +504,22 @@ Judge 必须输出排序列表。未知组件、候选外组件、未知 reason 
 
 - `RuntimeCaseBundle` 不含 `ground_truth`、`matched_faults`、`evidence_components`。
 - `EvaluationLabelBundle` 只能由 Evaluator 使用。
+- `ReasonLabelTaxonomy` 的 label、alias 和 mapping hash 稳定，alias 变更会触发 golden test。
 - `VlmObservation` schema 禁止额外字段、禁用字段和因果词。
 - `FigureManifest` 的 `panel_id` 能和 VLM observations 做 round-trip 校验。
 - `CandidateSet` 能稳定处理别名、去重、oracle 标记和排序。
-- `RcaPrediction` 的 `candidate_id` 必须来自候选集，`reason_label` 必须来自封闭标签空间。
+- `RcaPrediction` 的 `candidate_id` 必须来自候选集，`reason_label` 必须来自封闭标签空间，`observation_evidence_ids` 必须存在。
 
 ### 9.2 Module Behavior Tests
 
 - 指标槽位匹配符合专家优先级。
 - 槽位无命中、NaN 多、零方差、多指标 tie-break 有确定结果。
 - 每个 case 最多 4 张图，默认一个 panel 一个指标。
-- Trace/log 泄漏过滤移除标签名、case 名和解释性词。
+- Heuristic Candidate Provider 在固定 fixture 上输出稳定 top-k、分数和 low-signal 标记。
+- Trace/log 泄漏过滤移除标签名、case 名、解释性词及常见变体。
 - VLM 非法 JSON、未知 panel、禁用字段、因果词触发重试或拒收。
 - Judge 未知组件、非法标签、重复预测、空输出按固定规则处理。
+- Judge rationale 抽样检查不能包含未被 evidence ids 引用的组件名、指标名或新事实。
 - analysis sidecar 包含复现索引，debug sidecar 才包含 raw prompt/response。
 
 ### 9.3 Experiment-Level Tests
@@ -421,13 +529,21 @@ Judge 必须输出排序列表。未知组件、候选外组件、未知 reason 
 - 主流程与 baseline 的候选、指标、trace、Judge、标签空间和解码参数完全一致。
 - Deterministic text-summary baseline 与 VLM observations 使用同构事实字段。
 
+### 9.4 End-to-End Integration Tests
+
+- 使用一个完整 fixture case 和 fake VLM/LLM client 跑通 VLM 主流程，验证主结果、sidecar 和 evaluator 输出。
+- 使用同一个 fixture 跑通 text-only baseline 和 deterministic text-summary baseline，验证三者共享 candidate set、selected metrics、trace/log context、taxonomy 和 Judge 配置。
+- 验证 sidecar 中 `candidate_id`、`metric_id`、`panel_id`、`observation_evidence_id`、`trace_edge_id`、`log_event_id`、`ranked_predictions` 的引用完整性。
+- 使用 evaluator golden case 验证 Correct、Partial、top@1、top@3、top@5、非法预测、重复预测和空预测。
+
 ## 10. Risks and Mitigations
 
 - VLM 增益可能来自文本重写而非视觉理解。Mitigation: 增加 deterministic text-summary baseline。
 - Oracle 候选可能高估能力。Mitigation: oracle 标记为 diagnosis-only / upper-bound，并与 heuristic 分表报告。
 - Trace/log 可能泄漏标签。Mitigation: 使用 sanitized facts、禁用解释性字段并测试过滤。
 - VLM 可能隐式推理。Mitigation: 严格 schema、禁用词过滤、抽样审计 observations。
-- 4 张图预算可能覆盖不足。Mitigation: 声明为第一版成本约束，并可做 1/2/4 图预算敏感性分析。
+- Deterministic text-summary baseline 可能实现复杂且带入程序规则偏差。Mitigation: 明确字段判定规则，记录 summary_method，并用同构 `ObservationEvidence` 控制 prompt 差异。
+- 4 张图预算可能覆盖不足，且不同 VLM 模型的多图和分辨率能力不同。Mitigation: 声明为第一版成本约束，把 image/panel budget 配置化，并可做 1/2/4 图预算敏感性分析。
 - 统计选图可能成为隐藏混杂变量。Mitigation: 报告 metric selector 覆盖率，并可增加随机/弱统计/仅专家槽位消融。
 
 ## 11. Acceptance Criteria
@@ -441,3 +557,4 @@ Judge 必须输出排序列表。未知组件、候选外组件、未知 reason 
 5. sidecar analysis 级别足以复现候选、指标、图像、VLM facts、Judge predictions 和评估结果。
 6. 报告包含 Correct、Partial、top@1、top@3、top@5，并区分 oracle 与 heuristic setting。
 7. 契约测试和关键模块测试覆盖标签泄漏、schema 禁用字段、图像预算、trace/log 过滤、评估 top-k golden cases。
+8. Reason label taxonomy、alias mapping 和 heuristic candidate seed algorithm 均版本化，并能通过 fixture/golden tests 复现。
