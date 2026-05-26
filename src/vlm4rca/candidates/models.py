@@ -69,10 +69,14 @@ class RcaCandidate(BaseModel, frozen=True):
         if self.variant_candidate_id != expected_variant_id:
             raise ValueError(f"variant_candidate_id must be {expected_variant_id}")
 
-        if self.variant == "M" and self.present_in_variants != ("M",):
-            raise ValueError("Metric-only candidates must have present_in_variants=('M',)")
+        if self.variant not in self.present_in_variants:
+            raise ValueError("candidate variant must appear in present_in_variants")
+        if self.introduced_by not in self.sources:
+            raise ValueError("introduced_by must appear in sources")
         if self.variant == "M" and self.sources != ("metric",):
             raise ValueError("Metric-only candidates must have sources=('metric',)")
+        if self.variant == "M" and self.introduced_by != "metric":
+            raise ValueError("Metric-only candidates must have introduced_by='metric'")
         return self
 
 
