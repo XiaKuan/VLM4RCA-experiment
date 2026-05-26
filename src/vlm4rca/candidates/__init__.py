@@ -12,6 +12,14 @@ from vlm4rca.candidates.models import (
     TargetType,
     VariantName,
 )
+from vlm4rca.candidates.multisource_models import (
+    MultiSourceVariantResult,
+    ShadowEdgeCandidate,
+    SourceBucket,
+    SourceCandidate,
+    SourceQuotaConfig,
+    TopologyExpansionConfig,
+)
 
 __all__ = [
     "CandidateSource",
@@ -19,8 +27,14 @@ __all__ = [
     "MetricCandidateBuildResult",
     "MetricCategory",
     "MetricFeatureEvidence",
+    "MultiSourceVariantResult",
     "RcaCandidate",
+    "ShadowEdgeCandidate",
+    "SourceBucket",
+    "SourceCandidate",
+    "SourceQuotaConfig",
     "TargetType",
+    "TopologyExpansionConfig",
     "VariantName",
     "build_metric_candidates_for_case",
     "build_metric_candidates_from_dataframe",
