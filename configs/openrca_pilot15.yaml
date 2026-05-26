@@ -1,0 +1,49 @@
+dataset: openrca_bank
+data_root: data/OpenRCA/Bank
+description: "Phase 1 fixed pilot subset for data and evaluation skeleton validation."
+cases:
+  - case_id: task3_008
+    case_group: metric_obvious
+    selection_reason: "MG02 high JVM CPU load; metric-heavy component localization case."
+  - case_id: task3_009
+    case_group: metric_obvious
+    selection_reason: "Tomcat02 high disk I/O read usage; metric-heavy component localization case."
+  - case_id: task3_010
+    case_group: metric_obvious
+    selection_reason: "IG01 high CPU usage; metric-heavy component localization case."
+  - case_id: task3_014
+    case_group: metric_obvious
+    selection_reason: "Tomcat02 high disk I/O read usage; repeated metric-heavy service case."
+  - case_id: task3_015
+    case_group: metric_obvious
+    selection_reason: "Mysql02 high CPU usage; database component metric-heavy case."
+  - case_id: task3_001
+    case_group: soft_latency
+    selection_reason: "Tomcat01 network latency; trace and latency-sensitive case."
+  - case_id: task3_002
+    case_group: soft_latency
+    selection_reason: "Tomcat02 network latency; trace and latency-sensitive case."
+  - case_id: task3_004
+    case_group: soft_latency
+    selection_reason: "MG02 network latency; gateway-like dependency latency case."
+  - case_id: task3_005
+    case_group: soft_latency
+    selection_reason: "apache02 network latency; edge-facing latency case."
+  - case_id: task3_013
+    case_group: soft_latency
+    selection_reason: "MG01 network latency; later-date dependency latency case."
+  - case_id: task3_003_multi
+    case_group: mixed_ambiguous
+    selection_reason: "Two matched faults across MG01 and Tomcat04; validates multi-ground-truth sidecars."
+  - case_id: task6_008_multi
+    case_group: mixed_ambiguous
+    selection_reason: "Two apache02 network reasons in one case; validates duplicate raw component handling."
+  - case_id: task6_009_multi
+    case_group: mixed_ambiguous
+    selection_reason: "MG02 JVM OOM and Tomcat03 disk I/O; mixed metric and resource failure."
+  - case_id: task7_006_multi
+    case_group: mixed_ambiguous
+    selection_reason: "IG02 disk I/O and apache02 packet loss; mixed component/reason case."
+  - case_id: task7_011_multi
+    case_group: mixed_ambiguous
+    selection_reason: "IG02 and MG02 disk I/O faults; multi-component metric-heavy case."
