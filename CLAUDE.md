@@ -9,8 +9,8 @@ VLM4RCA：基于 VLM + LLM 的根因分析系统，使用 OpenRCA 数据集。
 ## 常用命令
 
 ```bash
-# 安装依赖
-uv sync
+# 安装依赖（含 dev 工具：pytest、ruff 等）
+uv sync --dev
 
 # 运行测试
 uv run pytest tests/ -v
@@ -22,6 +22,14 @@ uv run pytest tests/test_xxx.py::test_func -v
 uv run ruff check src/ tests/
 uv run ruff format src/ tests/
 ```
+
+### 依赖管理说明
+
+项目同时维护两套 dev 依赖声明：
+- `[project.optional-dependencies] dev` — PEP 621 标准，`pip install -e ".[dev]"` 使用
+- `[dependency-groups] dev` — PEP 735，`uv sync --dev` 使用
+
+**新建 worktree 后必须先执行 `uv sync --dev`**，否则 pytest/ruff 不会安装，测试会因 `ModuleNotFoundError` 失败。
 
 ## 数据说明
 
