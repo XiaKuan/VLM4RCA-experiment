@@ -236,3 +236,33 @@ def update_present_in_variants(
         ]
         updated[variant] = result.model_copy(update={"candidates": candidates})
     return updated
+
+
+def update_present_in_variants_per_case(
+    results_by_variant_by_case: dict[VariantName, dict[str, MultiSourceVariantResult]],
+) -> dict[VariantName, dict[str, MultiSourceVariantResult]]:
+    """Update present_in_variants for per-case variant results.
+
+    Unlike update_present_in_variants which expects one result per variant,
+    this function handles the structure variant -> case_id -> result.
+    """
+    presence: dict[str, list[VariantName]] = defaultdict(list)
+    for variant in ("M", "M+T", "M+T+L", "M+T+L+Topo"):
+        case_results = results_by_variant_by_case.get(variant, {})
+        for result in case_results.values():
+            for candidate in result.candidates:
+                if variant not in presence[candidate.candidate_key]:
+                    presence[candidate.candidate_key].append(variant)
+
+    updated: dict[VariantName, dict[str, MultiSourceVariantResult]] = {}
+    for variant, case_results in results_by_variant_by_case.items():
+        updated[variant] = {}
+        for case_id, result in case_results.items():
+            candidates = [
+                candidate.model_copy(
+                    update={"present_in_variants": tuple(presence[candidate.candidate_key])}
+                )
+                for candidate in result.candidates
+            ]
+            updated[variant][case_id] = result.model_copy(update={"candidates": candidates})
+    return updated

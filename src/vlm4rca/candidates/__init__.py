@@ -9,6 +9,7 @@ from vlm4rca.candidates.merge_rank import (
     build_variant_result,
     convert_metric_candidates_to_source_candidates,
     update_present_in_variants,
+    update_present_in_variants_per_case,
 )
 from vlm4rca.candidates.metric_builder import (
     build_metric_candidates_for_case,
@@ -25,6 +26,7 @@ from vlm4rca.candidates.models import (
     VariantName,
 )
 from vlm4rca.candidates.multisource_models import (
+    MAX_FINAL_CANDIDATES,
     MultiSourceVariantResult,
     ShadowEdgeCandidate,
     SourceBucket,
@@ -44,6 +46,7 @@ from vlm4rca.candidates.trace_builder import (
 )
 
 __all__ = [
+    "MAX_FINAL_CANDIDATES",
     "VARIANT_BUCKETS",
     "CandidateSource",
     "DEFAULT_LOG_KEYWORDS",
@@ -60,6 +63,7 @@ __all__ = [
     "TargetType",
     "TopologyExpansionConfig",
     "update_present_in_variants",
+    "update_present_in_variants_per_case",
     "VariantName",
     "TraceBuildResult",
     "expand_topology_candidates",

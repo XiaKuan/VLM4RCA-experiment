@@ -9,7 +9,7 @@ from pathlib import Path
 from vlm4rca.candidates.log_builder import build_log_candidates_for_case
 from vlm4rca.candidates.merge_rank import (
     build_variant_result,
-    update_present_in_variants,
+    update_present_in_variants_per_case,
 )
 from vlm4rca.candidates.metric_builder import build_metric_candidates_for_case
 from vlm4rca.candidates.models import RcaCandidate
@@ -190,8 +190,8 @@ def build_candidate_recall_markdown(ablation: dict) -> str:
 
 def run_multisource_candidate_recall(
     manifest_path: Path,
-    data_root: Path,
-    output_dir: Path,
+    data_root: Path | None = None,
+    output_dir: Path = Path("outputs/openrca_phase3_multisource_pilot15"),
 ) -> dict:
     """Run the full Phase 3 multi-source candidate recall pipeline.
 
@@ -246,8 +246,7 @@ def run_multisource_candidate_recall(
             all_variants[variant][case_id] = result
 
     # --- Update present_in_variants across all cases ---
-    for variant in VARIANT_CHAIN:
-        all_variants[variant] = update_present_in_variants(all_variants[variant])
+    all_variants = update_present_in_variants_per_case(all_variants)
 
     # --- Write per-variant candidate JSON files ---
     candidates_dir = output_dir / "candidates"

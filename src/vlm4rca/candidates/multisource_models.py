@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from vlm4rca.candidates.models import CandidateSource, RcaCandidate, TargetType, VariantName
 
+MAX_FINAL_CANDIDATES = 8
+
 SourceBucket = Literal[
     "metric",
     "trace_service",
@@ -15,7 +17,7 @@ SourceBucket = Literal[
 ]
 
 
-class SourceCandidate(BaseModel):
+class SourceCandidate(BaseModel, frozen=True):
     case_id: str
     candidate_key: str
     target_type: TargetType
@@ -101,8 +103,8 @@ class MultiSourceVariantResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_budget_and_ranks(self) -> MultiSourceVariantResult:
-        if len(self.candidates) > 8:
-            raise ValueError("final candidate budget is 8")
+        if len(self.candidates) > MAX_FINAL_CANDIDATES:
+            raise ValueError(f"final candidate budget is {MAX_FINAL_CANDIDATES}")
         ranks = [candidate.rank for candidate in self.candidates]
         if ranks != list(range(1, len(self.candidates) + 1)):
             raise ValueError("candidate ranks must be consecutive from 1")
