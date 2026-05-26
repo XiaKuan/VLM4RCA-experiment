@@ -1,3 +1,7 @@
+from vlm4rca.candidates.metric_builder import (
+    build_metric_candidates_for_case,
+    build_metric_candidates_from_dataframe,
+)
 from vlm4rca.candidates.models import (
     METRIC_CANDIDATE_BUDGET,
     CandidateSource,
@@ -18,4 +22,6 @@ __all__ = [
     "RcaCandidate",
     "TargetType",
     "VariantName",
+    "build_metric_candidates_for_case",
+    "build_metric_candidates_from_dataframe",
 ]
