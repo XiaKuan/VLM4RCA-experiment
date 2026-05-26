@@ -152,3 +152,30 @@ def test_phase3_cli_writes_outputs(tmp_path: Path) -> None:
     report = json.loads((output_dir / "candidate_recall_ablation.json").read_text(encoding="utf-8"))
     assert report["secondary"]["M"]["recall_at_8"] == 0.5
     assert report["secondary"]["M+T"]["recall_at_8"] == 1.0
+
+
+def test_real_pilot15_multisource_candidate_recall_acceptance(tmp_path: Path) -> None:
+    manifest_path = Path("configs/openrca_pilot15.yaml")
+    data_root = Path("data/OpenRCA/Bank")
+    if not manifest_path.exists() or not data_root.exists():
+        return
+
+    result = run_multisource_candidate_recall(
+        manifest_path=manifest_path,
+        data_root=data_root,
+        output_dir=tmp_path / "phase3_multisource",
+    )
+
+    report = result["ablation"]
+    assert set(report.keys()) == {"primary", "secondary"}
+    for section in ("primary", "secondary"):
+        assert list(report[section].keys()) == ["M", "M+T", "M+T+L", "M+T+L+Topo"]
+        for variant in ("M", "M+T", "M+T+L", "M+T+L+Topo"):
+            row = report[section][variant]
+            assert 0.0 <= row["recall_at_3"] <= 1.0
+            assert 0.0 <= row["recall_at_5"] <= 1.0
+            assert 0.0 <= row["recall_at_8"] <= 1.0
+            assert row["avg_candidates"] <= 8.0
+    assert len(result["first_hit_rows"]) == 15
+    assert result["checkpoint_decision"]["eligible_cases"] >= 0
+    assert result["shadow_edge_metrics"]["diagnostic_only"] is True
