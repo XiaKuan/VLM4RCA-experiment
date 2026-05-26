@@ -1,3 +1,9 @@
+from vlm4rca.candidates.log_builder import (
+    DEFAULT_LOG_KEYWORDS,
+    LogBuildResult,
+    build_log_candidates_for_case,
+    build_log_candidates_from_dataframe,
+)
 from vlm4rca.candidates.metric_builder import (
     build_metric_candidates_for_case,
     build_metric_candidates_from_dataframe,
@@ -28,6 +34,7 @@ from vlm4rca.candidates.multisource_models import (
 
 __all__ = [
     "CandidateSource",
+    "DEFAULT_LOG_KEYWORDS",
     "METRIC_CANDIDATE_BUDGET",
     "MetricCandidateBuildResult",
     "MetricCategory",
@@ -42,6 +49,9 @@ __all__ = [
     "TopologyExpansionConfig",
     "VariantName",
     "TraceBuildResult",
+    "LogBuildResult",
+    "build_log_candidates_for_case",
+    "build_log_candidates_from_dataframe",
     "build_metric_candidates_for_case",
     "build_metric_candidates_from_dataframe",
     "build_trace_candidates_for_case",
