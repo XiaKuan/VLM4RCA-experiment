@@ -8,6 +8,11 @@ from vlm4rca.candidates.metric_builder import (
     build_metric_candidates_for_case,
     build_metric_candidates_from_dataframe,
 )
+from vlm4rca.candidates.topology_builder import (
+    expand_topology_candidates,
+    load_static_topology_edges,
+    topology_edges_from_shadow_edges,
+)
 from vlm4rca.candidates.trace_builder import (
     TraceBuildResult,
     build_trace_candidates_for_case,
@@ -49,6 +54,9 @@ __all__ = [
     "TopologyExpansionConfig",
     "VariantName",
     "TraceBuildResult",
+    "expand_topology_candidates",
+    "load_static_topology_edges",
+    "topology_edges_from_shadow_edges",
     "LogBuildResult",
     "build_log_candidates_for_case",
     "build_log_candidates_from_dataframe",
