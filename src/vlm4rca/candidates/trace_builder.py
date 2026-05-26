@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from vlm4rca.candidates._column_utils import choose_column as _choose_column
 from vlm4rca.candidates.multisource_models import ShadowEdgeCandidate, SourceCandidate
 from vlm4rca.openrca.canonicalization import canonicalize_component
 from vlm4rca.openrca.models import IncidentWindows
@@ -33,14 +34,6 @@ class TraceColumns:
     parent_span_id: str | None
     caller: str | None
     callee: str | None
-
-
-def _choose_column(columns: list[str], candidates: tuple[str, ...]) -> str | None:
-    lowered = {column.lower(): column for column in columns}
-    for name in candidates:
-        if name.lower() in lowered:
-            return lowered[name.lower()]
-    return None
 
 
 def _detect_columns(frame: pd.DataFrame) -> TraceColumns | None:

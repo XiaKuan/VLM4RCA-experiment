@@ -36,7 +36,7 @@ def load_static_topology_edges(path: Path) -> list[tuple[str, str]]:
     if source_column is None or target_column is None:
         raise ValueError("topology.csv must contain source/target columns")
     return _dedupe_edges(
-        [(str(row[source_column]), str(row[target_column])) for _index, row in frame.iterrows()]
+        [(str(src), str(tgt)) for src, tgt in zip(frame[source_column], frame[target_column])]
     )
 
 

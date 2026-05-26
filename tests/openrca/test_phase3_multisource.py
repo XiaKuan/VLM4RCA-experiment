@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from vlm4rca.openrca.phase3_multisource import (
     build_candidate_recall_markdown,
@@ -218,11 +219,13 @@ def test_phase3_cli_writes_outputs(tmp_path: Path) -> None:
     assert report["secondary"]["M+T"]["recall_at_8"] == 1.0
 
 
+@pytest.mark.skipif(
+    not Path("configs/openrca_pilot15.yaml").exists() or not Path("data/OpenRCA/Bank").exists(),
+    reason="Pilot data not available",
+)
 def test_real_pilot15_multisource_candidate_recall_acceptance(tmp_path: Path) -> None:
     manifest_path = Path("configs/openrca_pilot15.yaml")
     data_root = Path("data/OpenRCA/Bank")
-    if not manifest_path.exists() or not data_root.exists():
-        return
 
     result = run_multisource_candidate_recall(
         manifest_path=manifest_path,

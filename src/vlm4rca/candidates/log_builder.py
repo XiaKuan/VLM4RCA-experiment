@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from vlm4rca.candidates._column_utils import choose_column as _choose_column
 from vlm4rca.candidates.multisource_models import SourceCandidate
 from vlm4rca.openrca.canonicalization import canonicalize_component
 from vlm4rca.openrca.models import IncidentWindows
@@ -31,14 +32,6 @@ class LogBuildResult:
     case_id: str
     source_candidates: list[SourceCandidate]
     warnings: list[str]
-
-
-def _choose_column(columns: list[str], candidates: tuple[str, ...]) -> str | None:
-    lowered = {column.lower(): column for column in columns}
-    for name in candidates:
-        if name.lower() in lowered:
-            return lowered[name.lower()]
-    return None
 
 
 def _duration_minutes(start: int, end: int) -> float:
