@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from vlm4rca.openrca.adapter import OpenRCABankAdapter
 from vlm4rca.openrca.manifest import load_case_manifest
 from vlm4rca.openrca.phase1 import build_phase1_sidecars, main, write_phase1_outputs
@@ -108,3 +110,41 @@ def test_cli_main_writes_outputs(tmp_path: Path) -> None:
     summary = json.loads((output_dir / "recall_empty_run.json").read_text(encoding="utf-8"))
     assert summary["n_cases"] == 2
     assert summary["component_recall_at_k"] == {"3": 0.0, "5": 0.0, "8": 0.0}
+
+
+@pytest.mark.skipif(
+    not Path("data/OpenRCA/Bank/cases").exists(),
+    reason="OpenRCA-Bank data symlink is not available",
+)
+def test_real_pilot15_outputs_phase1_sidecars(tmp_path: Path) -> None:
+    output_dir = tmp_path / "pilot15"
+
+    exit_code = main(
+        [
+            "--manifest",
+            "configs/openrca_pilot15.yaml",
+            "--data-root",
+            "data/OpenRCA/Bank",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    case_sidecars = sorted((output_dir / "case_sidecars").glob("*.json"))
+    assert len(case_sidecars) == 15
+
+    modality = json.loads((output_dir / "modality_availability.json").read_text(encoding="utf-8"))
+    gt_mapping = json.loads((output_dir / "ground_truth_mapping.json").read_text(encoding="utf-8"))
+    recall = json.loads((output_dir / "recall_empty_run.json").read_text(encoding="utf-8"))
+
+    assert len(modality) == 15
+    assert all("modality_availability" in row for row in modality)
+    assert len(gt_mapping) == 15
+    assert all(row["gt_mapping"] for row in gt_mapping)
+    assert recall["n_cases"] == 15
+    assert recall["component_recall_at_k"] == {"3": 0.0, "5": 0.0, "8": 0.0}
+
+    written_paths = [path.name for path in output_dir.rglob("*") if path.is_file()]
+    assert not any("candidate" in name for name in written_paths)
+    assert not any(name.endswith((".png", ".jpg", ".jpeg", ".svg", ".html")) for name in written_paths)
