@@ -65,9 +65,7 @@ class RcaCandidate(BaseModel, frozen=True):
         if self.candidate_key != expected_key:
             raise ValueError(f"candidate_key must be {expected_key}")
 
-        expected_variant_id = (
-            f"cand:{self.case_id}:{self.variant}:{self.rank}:{self.target_type}:{self.canonical_target}"
-        )
+        expected_variant_id = f"cand:{self.case_id}:{self.variant}:{self.rank}:{self.target_type}:{self.canonical_target}"
         if self.variant_candidate_id != expected_variant_id:
             raise ValueError(f"variant_candidate_id must be {expected_variant_id}")
 

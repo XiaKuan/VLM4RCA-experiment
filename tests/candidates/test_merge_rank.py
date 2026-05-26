@@ -43,7 +43,9 @@ def _source(target: str, bucket: str, score: float, source: str | None = None) -
 
 
 def test_convert_metric_candidates_to_source_candidates() -> None:
-    converted = convert_metric_candidates_to_source_candidates([_metric_candidate(1, "checkout", 8.0)])
+    converted = convert_metric_candidates_to_source_candidates(
+        [_metric_candidate(1, "checkout", 8.0)]
+    )
 
     assert converted[0].candidate_key == "service:checkout"
     assert converted[0].source == "metric"
@@ -78,11 +80,18 @@ def test_build_variant_result_merges_duplicate_services_and_keeps_top_eight() ->
     assert checkout.source_scores["trace"] == 1.0
     assert len(result.candidates) == 5
     assert [candidate.rank for candidate in result.candidates] == [1, 2, 3, 4, 5]
-    assert all(candidate.variant_candidate_id.startswith("cand:case_001:M+T+L+Topo:") for candidate in result.candidates)
+    assert all(
+        candidate.variant_candidate_id.startswith("cand:case_001:M+T+L+Topo:")
+        for candidate in result.candidates
+    )
 
 
 def test_protected_candidates_are_ranked_before_non_protected_candidates() -> None:
-    metric = [_metric_candidate(1, "metric-a", 10.0), _metric_candidate(2, "metric-b", 9.0), _metric_candidate(3, "metric-c", 8.0)]
+    metric = [
+        _metric_candidate(1, "metric-a", 10.0),
+        _metric_candidate(2, "metric-b", 9.0),
+        _metric_candidate(3, "metric-c", 8.0),
+    ]
     sources = [
         _source("trace-a", "trace_service", 10.0, "trace"),
         _source("trace-b", "trace_service", 9.0, "trace"),
@@ -102,12 +111,23 @@ def test_protected_candidates_are_ranked_before_non_protected_candidates() -> No
 
     protected_targets = [candidate.canonical_target for candidate in result.candidates[:7]]
 
-    assert set(protected_targets) == {"metric-a", "metric-b", "metric-c", "trace-low", "trace-a", "log-a", "log-b"}
+    assert set(protected_targets) == {
+        "metric-a",
+        "metric-b",
+        "metric-c",
+        "trace-low",
+        "trace-a",
+        "log-a",
+        "log-b",
+    }
 
 
 def test_variant_filters_disabled_source_buckets() -> None:
     metric = [_metric_candidate(1, "checkout", 8.0)]
-    sources = [_source("payment", "trace_service", 5.0, "trace"), _source("gateway", "log", 3.0, "log")]
+    sources = [
+        _source("payment", "trace_service", 5.0, "trace"),
+        _source("gateway", "log", 3.0, "log"),
+    ]
 
     result = build_variant_result(
         case_id="case_001",
@@ -117,12 +137,21 @@ def test_variant_filters_disabled_source_buckets() -> None:
         shadow_edges=[],
     )
 
-    assert [candidate.canonical_target for candidate in result.candidates] == ["checkout", "payment"]
+    assert [candidate.canonical_target for candidate in result.candidates] == [
+        "checkout",
+        "payment",
+    ]
 
 
 def test_update_present_in_variants_records_cross_variant_presence() -> None:
     m = build_variant_result("case_001", "M", [_metric_candidate(1, "checkout", 8.0)], [], [])
-    mt = build_variant_result("case_001", "M+T", [_metric_candidate(1, "checkout", 8.0)], [_source("payment", "trace_service", 5.0, "trace")], [])
+    mt = build_variant_result(
+        "case_001",
+        "M+T",
+        [_metric_candidate(1, "checkout", 8.0)],
+        [_source("payment", "trace_service", 5.0, "trace")],
+        [],
+    )
 
     updated = update_present_in_variants({"M": m, "M+T": mt})
 

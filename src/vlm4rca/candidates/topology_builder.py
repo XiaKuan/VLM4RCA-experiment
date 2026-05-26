@@ -22,7 +22,9 @@ def _dedupe_edges(edges: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return sorted((source, target) for source, target in cleaned if source != target)
 
 
-def topology_edges_from_shadow_edges(shadow_edges: list[ShadowEdgeCandidate]) -> list[tuple[str, str]]:
+def topology_edges_from_shadow_edges(
+    shadow_edges: list[ShadowEdgeCandidate],
+) -> list[tuple[str, str]]:
     return _dedupe_edges([(edge.caller, edge.callee) for edge in shadow_edges])
 
 
@@ -77,8 +79,12 @@ def expand_topology_candidates(
         neighbors: list[tuple[str, str, str]] = []
         upstream = sorted(source for source, target in normalized_edges if target == seed_target)
         downstream = sorted(target for source, target in normalized_edges if source == seed_target)
-        neighbors.extend((neighbor, "upstream", _seed_reason(seed, "upstream")) for neighbor in upstream)
-        neighbors.extend((neighbor, "downstream", _seed_reason(seed, "downstream")) for neighbor in downstream)
+        neighbors.extend(
+            (neighbor, "upstream", _seed_reason(seed, "upstream")) for neighbor in upstream
+        )
+        neighbors.extend(
+            (neighbor, "downstream", _seed_reason(seed, "downstream")) for neighbor in downstream
+        )
 
         per_seed_count = 0
         for neighbor, direction, reason in neighbors:
@@ -103,4 +109,6 @@ def expand_topology_candidates(
             )
             per_seed_count += 1
 
-    return sorted(emitted.values(), key=lambda candidate: (-candidate.score, candidate.canonical_target))
+    return sorted(
+        emitted.values(), key=lambda candidate: (-candidate.score, candidate.canonical_target)
+    )

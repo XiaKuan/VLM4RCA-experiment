@@ -98,17 +98,11 @@ def test_candidate_recall_ablation_separates_primary_and_secondary() -> None:
         },
         "M+T+L": {
             "case_1": [_candidate("case_1", "M+T+L", 1, "checkout", "metric")],
-            "case_2": [
-                _candidate("case_2", "M+T+L", 1, "payment", "trace")
-            ],
+            "case_2": [_candidate("case_2", "M+T+L", 1, "payment", "trace")],
         },
         "M+T+L+Topo": {
-            "case_1": [
-                _candidate("case_1", "M+T+L+Topo", 1, "checkout", "metric")
-            ],
-            "case_2": [
-                _candidate("case_2", "M+T+L+Topo", 1, "payment", "trace")
-            ],
+            "case_1": [_candidate("case_1", "M+T+L+Topo", 1, "checkout", "metric")],
+            "case_2": [_candidate("case_2", "M+T+L+Topo", 1, "payment", "trace")],
         },
     }
 
@@ -124,17 +118,9 @@ def test_first_hit_rows_compute_first_and_new_hit_sources() -> None:
     sidecars = [_sidecar("case_1", "soft_latency", "payment")]
     candidates = {
         "M": {"case_1": [_candidate("case_1", "M", 1, "checkout", "metric")]},
-        "M+T": {
-            "case_1": [_candidate("case_1", "M+T", 1, "payment", "trace")]
-        },
-        "M+T+L": {
-            "case_1": [_candidate("case_1", "M+T+L", 1, "payment", "trace")]
-        },
-        "M+T+L+Topo": {
-            "case_1": [
-                _candidate("case_1", "M+T+L+Topo", 1, "payment", "trace")
-            ]
-        },
+        "M+T": {"case_1": [_candidate("case_1", "M+T", 1, "payment", "trace")]},
+        "M+T+L": {"case_1": [_candidate("case_1", "M+T+L", 1, "payment", "trace")]},
+        "M+T+L+Topo": {"case_1": [_candidate("case_1", "M+T+L+Topo", 1, "payment", "trace")]},
     }
 
     rows = build_first_hit_rows(sidecars, candidates)
@@ -156,12 +142,8 @@ def test_checkpoint_uses_full_eligible_cases_for_metric_vs_full_comparison() -> 
             "case_2": [],
         },
         "M+T+L+Topo": {
-            "case_1": [
-                _candidate("case_1", "M+T+L+Topo", 1, "checkout", "metric")
-            ],
-            "case_2": [
-                _candidate("case_2", "M+T+L+Topo", 1, "payment", "trace")
-            ],
+            "case_1": [_candidate("case_1", "M+T+L+Topo", 1, "checkout", "metric")],
+            "case_2": [_candidate("case_2", "M+T+L+Topo", 1, "payment", "trace")],
         },
     }
 
@@ -190,9 +172,7 @@ def test_shadow_edge_metrics_are_diagnostic() -> None:
         ]
     }
 
-    summary = summarize_shadow_edges(
-        {"case_1": ["edge:gateway->checkout"]}, shadow_edges
-    )
+    summary = summarize_shadow_edges({"case_1": ["edge:gateway->checkout"]}, shadow_edges)
 
     assert summary["diagnostic_only"] is True
     assert summary["edge_recall_at_3"] == 1.0

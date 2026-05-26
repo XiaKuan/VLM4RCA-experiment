@@ -32,7 +32,7 @@ from vlm4rca.evaluation.ablation import (
 )
 from vlm4rca.openrca.adapter import OpenRCABankAdapter
 from vlm4rca.openrca.manifest import load_case_manifest
-from vlm4rca.openrca.models import CaseManifest, Phase1CaseSidecar
+from vlm4rca.openrca.models import Phase1CaseSidecar
 from vlm4rca.openrca.phase1 import build_phase1_sidecars
 
 
@@ -129,7 +129,6 @@ def _build_variants_for_case(
     topo_source_candidates: list,
 ) -> dict[str, MultiSourceVariantResult]:
     """Build all four variant results for a single case."""
-    all_non_metric = [*trace_source_candidates, *log_source_candidates, *topo_source_candidates]
     results: dict[str, MultiSourceVariantResult] = {}
 
     for variant in VARIANT_CHAIN:
@@ -171,7 +170,10 @@ def build_candidate_recall_markdown(ablation: dict) -> str:
     """Build markdown report from ablation dict."""
     lines: list[str] = []
 
-    for section_key, title in (("primary", "Primary Analysis"), ("secondary", "Secondary Analysis")):
+    for section_key, title in (
+        ("primary", "Primary Analysis"),
+        ("secondary", "Secondary Analysis"),
+    ):
         section = ablation.get(section_key, {})
         lines.append(f"## {title}")
         lines.append("")
@@ -266,8 +268,7 @@ def run_multisource_candidate_recall(
     candidates_by_variant: dict[str, dict[str, list[RcaCandidate]]] = {}
     for variant in VARIANT_CHAIN:
         candidates_by_variant[variant] = {
-            case_id: list(result.candidates)
-            for case_id, result in all_variants[variant].items()
+            case_id: list(result.candidates) for case_id, result in all_variants[variant].items()
         }
 
     ablation = build_candidate_recall_ablation(sidecars, candidates_by_variant)

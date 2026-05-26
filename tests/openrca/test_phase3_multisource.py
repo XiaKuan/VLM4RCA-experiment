@@ -23,7 +23,9 @@ def _write_case(root: Path, case_id: str, component: str, metric_hit: str, trace
                 "inject_time": 1000,
                 "context_start": 0,
                 "context_end": 2000,
-                "matched_faults": [{"component": component, "reason": "latency", "timestamp": 1000}],
+                "matched_faults": [
+                    {"component": component, "reason": "latency", "timestamp": 1000}
+                ],
                 "system_components": [component, metric_hit, trace_hit, "Gateway", "Payment"],
                 "evidence_components": [component, metric_hit, trace_hit, "Gateway", "Payment"],
             }
@@ -57,7 +59,13 @@ def _write_case(root: Path, case_id: str, component: str, metric_hit: str, trace
         {
             "timestamp": [110, 220, 610, 730, 750],
             "service": [trace_hit, trace_hit, trace_hit, trace_hit, trace_hit],
-            "message": ["ok", "ok", "timeout calling downstream", "retry backoff", "error connection"],
+            "message": [
+                "ok",
+                "ok",
+                "timeout calling downstream",
+                "retry backoff",
+                "error connection",
+            ],
         }
     ).to_csv(case_dir / "logs.csv", index=False)
 
@@ -85,16 +93,64 @@ def test_candidate_recall_markdown_contains_primary_and_secondary_tables() -> No
     markdown = build_candidate_recall_markdown(
         {
             "primary": {
-                "M": {"recall_at_3": 0.5, "recall_at_5": 0.5, "recall_at_8": 0.5, "soft_recall_at_8": 0.0, "avg_candidates": 1.0},
-                "M+T": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 2.0},
-                "M+T+L": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 2.0},
-                "M+T+L+Topo": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 3.0},
+                "M": {
+                    "recall_at_3": 0.5,
+                    "recall_at_5": 0.5,
+                    "recall_at_8": 0.5,
+                    "soft_recall_at_8": 0.0,
+                    "avg_candidates": 1.0,
+                },
+                "M+T": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 2.0,
+                },
+                "M+T+L": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 2.0,
+                },
+                "M+T+L+Topo": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 3.0,
+                },
             },
             "secondary": {
-                "M": {"recall_at_3": 0.5, "recall_at_5": 0.5, "recall_at_8": 0.5, "soft_recall_at_8": 0.0, "avg_candidates": 1.0},
-                "M+T": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 2.0},
-                "M+T+L": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 2.0},
-                "M+T+L+Topo": {"recall_at_3": 1.0, "recall_at_5": 1.0, "recall_at_8": 1.0, "soft_recall_at_8": 1.0, "avg_candidates": 3.0},
+                "M": {
+                    "recall_at_3": 0.5,
+                    "recall_at_5": 0.5,
+                    "recall_at_8": 0.5,
+                    "soft_recall_at_8": 0.0,
+                    "avg_candidates": 1.0,
+                },
+                "M+T": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 2.0,
+                },
+                "M+T+L": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 2.0,
+                },
+                "M+T+L+Topo": {
+                    "recall_at_3": 1.0,
+                    "recall_at_5": 1.0,
+                    "recall_at_8": 1.0,
+                    "soft_recall_at_8": 1.0,
+                    "avg_candidates": 3.0,
+                },
             },
         }
     )
@@ -104,9 +160,13 @@ def test_candidate_recall_markdown_contains_primary_and_secondary_tables() -> No
     assert "| Full | 1.000 | 1.000 | 1.000 | 1.000 | 3.00 |" in markdown
 
 
-def test_run_multisource_candidate_recall_writes_all_variants_and_checkpoint(tmp_path: Path) -> None:
+def test_run_multisource_candidate_recall_writes_all_variants_and_checkpoint(
+    tmp_path: Path,
+) -> None:
     data_root = tmp_path / "data"
-    _write_case(data_root, "case_1", component="Tomcat01", metric_hit="Tomcat01", trace_hit="Tomcat01")
+    _write_case(
+        data_root, "case_1", component="Tomcat01", metric_hit="Tomcat01", trace_hit="Tomcat01"
+    )
     _write_case(data_root, "case_2", component="Payment", metric_hit="Redis01", trace_hit="Payment")
     manifest_path = tmp_path / "manifest.yaml"
     _write_manifest(manifest_path, data_root)
@@ -120,7 +180,9 @@ def test_run_multisource_candidate_recall_writes_all_variants_and_checkpoint(tmp
     for variant in ["M", "M+T", "M+T+L", "M+T+L+Topo"]:
         assert (output_dir / "candidates" / variant / "case_1.json").exists()
         assert (output_dir / "candidates" / variant / "case_2.json").exists()
-        payload = json.loads((output_dir / "candidates" / variant / "case_2.json").read_text(encoding="utf-8"))
+        payload = json.loads(
+            (output_dir / "candidates" / variant / "case_2.json").read_text(encoding="utf-8")
+        )
         assert len(payload["candidates"]) <= 8
     first_hit = json.loads((output_dir / "first_hit_sources.json").read_text(encoding="utf-8"))
     assert first_hit[1]["first_hit_source"] == "Trace"
@@ -131,7 +193,9 @@ def test_run_multisource_candidate_recall_writes_all_variants_and_checkpoint(tmp
 
 def test_phase3_cli_writes_outputs(tmp_path: Path) -> None:
     data_root = tmp_path / "data"
-    _write_case(data_root, "case_1", component="Tomcat01", metric_hit="Tomcat01", trace_hit="Tomcat01")
+    _write_case(
+        data_root, "case_1", component="Tomcat01", metric_hit="Tomcat01", trace_hit="Tomcat01"
+    )
     _write_case(data_root, "case_2", component="Payment", metric_hit="Redis01", trace_hit="Payment")
     manifest_path = tmp_path / "manifest.yaml"
     _write_manifest(manifest_path, data_root)

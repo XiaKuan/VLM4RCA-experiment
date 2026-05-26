@@ -27,7 +27,16 @@ def _logs() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "timestamp": [610, 700, 910, 930, 950, 980, 620, 940],
-            "service": ["Checkout", "Checkout", "Checkout", "Checkout", "Checkout", "Checkout", "Gateway", "Gateway"],
+            "service": [
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Gateway",
+                "Gateway",
+            ],
             "message": [
                 "ok",
                 "retry once",
@@ -52,7 +61,10 @@ def test_default_keywords_include_phase0_required_terms() -> None:
 def test_build_log_candidates_scores_keyword_rate_delta() -> None:
     result = build_log_candidates_from_dataframe("case_001", _logs(), _windows())
 
-    assert [candidate.canonical_target for candidate in result.source_candidates] == ["checkout", "gateway"]
+    assert [candidate.canonical_target for candidate in result.source_candidates] == [
+        "checkout",
+        "gateway",
+    ]
     assert result.source_candidates[0].candidate_key == "service:checkout"
     assert result.source_candidates[0].source == "log"
     assert result.source_candidates[0].source_bucket == "log"

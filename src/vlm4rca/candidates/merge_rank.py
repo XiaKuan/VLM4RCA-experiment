@@ -61,7 +61,9 @@ def _normalize_and_protect(
 
     normalized: list[SourceCandidate] = []
     for bucket, bucket_candidates in by_bucket.items():
-        ordered = sorted(bucket_candidates, key=lambda candidate: (-candidate.score, candidate.canonical_target))
+        ordered = sorted(
+            bucket_candidates, key=lambda candidate: (-candidate.score, candidate.canonical_target)
+        )
         max_score = max((candidate.score for candidate in ordered), default=0.0)
         denominator = max_score if max_score > 0.0 else 1.0
         quota = quotas.quota_for(bucket)
@@ -109,9 +111,18 @@ def _merge_source_candidates(
                 max(item.normalized_score for item in items if item.source == source),
                 6,
             )
-        representative = sorted(items, key=lambda item: (-item.normalized_score, item.canonical_target))[0]
+        representative = sorted(
+            items, key=lambda item: (-item.normalized_score, item.canonical_target)
+        )[0]
         evidence: list[str] = []
-        for item in sorted(items, key=lambda item: (SOURCE_PRIORITY[item.source], -item.normalized_score, item.canonical_target)):
+        for item in sorted(
+            items,
+            key=lambda item: (
+                SOURCE_PRIORITY[item.source],
+                -item.normalized_score,
+                item.canonical_target,
+            ),
+        ):
             evidence.extend(item.evidence_summary)
         merged_rows.append(
             {
@@ -139,7 +150,9 @@ def _merge_source_candidates(
         )
 
     protected = sorted([row for row in merged_rows if bool(row["protected"])], key=row_sort_key)
-    non_protected = sorted([row for row in merged_rows if not bool(row["protected"])], key=row_sort_key)
+    non_protected = sorted(
+        [row for row in merged_rows if not bool(row["protected"])], key=row_sort_key
+    )
     ordered = (protected + non_protected)[:max_final_candidates]
 
     candidates: list[RcaCandidate] = []
@@ -178,7 +191,11 @@ def build_variant_result(
 ) -> MultiSourceVariantResult:
     enabled = set(VARIANT_BUCKETS[variant])
     metric_sources = convert_metric_candidates_to_source_candidates(metric_candidates)
-    all_sources = [candidate for candidate in [*metric_sources, *source_candidates] if candidate.source_bucket in enabled]
+    all_sources = [
+        candidate
+        for candidate in [*metric_sources, *source_candidates]
+        if candidate.source_bucket in enabled
+    ]
     normalized = _normalize_and_protect(all_sources, quotas)
     metric_only_keys = {candidate.candidate_key for candidate in metric_candidates}
     final_candidates = _merge_source_candidates(
@@ -212,7 +229,9 @@ def update_present_in_variants(
     updated: dict[VariantName, MultiSourceVariantResult] = {}
     for variant, result in results_by_variant.items():
         candidates = [
-            candidate.model_copy(update={"present_in_variants": tuple(presence[candidate.candidate_key])})
+            candidate.model_copy(
+                update={"present_in_variants": tuple(presence[candidate.candidate_key])}
+            )
             for candidate in result.candidates
         ]
         updated[variant] = result.model_copy(update={"candidates": candidates})

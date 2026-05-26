@@ -29,9 +29,48 @@ def _trace_frame() -> pd.DataFrame:
             "trace_id": ["t1", "t2", "t3", "t4", "t5", "t6", "u1", "u2", "u3", "u4", "u5", "u6"],
             "span_id": ["a", "a", "a", "a", "a", "a", "b", "b", "b", "b", "b", "b"],
             "parent_span_id": ["", "", "", "", "", "", "a", "a", "a", "a", "a", "a"],
-            "service": ["Gateway", "Gateway", "Gateway", "Gateway", "Gateway", "Gateway", "Checkout", "Checkout", "Checkout", "Checkout", "Checkout", "Checkout"],
-            "caller": ["Client", "Client", "Client", "Client", "Client", "Client", "Gateway", "Gateway", "Gateway", "Gateway", "Gateway", "Gateway"],
-            "callee": ["Gateway", "Gateway", "Gateway", "Gateway", "Gateway", "Gateway", "Checkout", "Checkout", "Checkout", "Checkout", "Checkout", "Checkout"],
+            "service": [
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+            ],
+            "caller": [
+                "Client",
+                "Client",
+                "Client",
+                "Client",
+                "Client",
+                "Client",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+            ],
+            "callee": [
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Gateway",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+                "Checkout",
+            ],
             "duration": [10, 10, 10, 30, 31, 32, 5, 5, 5, 25, 26, 27],
         }
     )
@@ -40,9 +79,16 @@ def _trace_frame() -> pd.DataFrame:
 def test_build_trace_candidates_scores_service_duration_shift() -> None:
     result = build_trace_candidates_from_dataframe("case_001", _trace_frame(), _windows())
 
-    service_candidates = [candidate for candidate in result.source_candidates if candidate.source_bucket == "trace_service"]
+    service_candidates = [
+        candidate
+        for candidate in result.source_candidates
+        if candidate.source_bucket == "trace_service"
+    ]
 
-    assert [candidate.canonical_target for candidate in service_candidates[:2]] == ["checkout", "gateway"]
+    assert [candidate.canonical_target for candidate in service_candidates[:2]] == [
+        "checkout",
+        "gateway",
+    ]
     assert service_candidates[0].candidate_key == "service:checkout"
     assert service_candidates[0].source == "trace"
     assert service_candidates[0].score > service_candidates[1].score
@@ -71,9 +117,48 @@ def test_build_trace_candidates_reconstructs_edges_from_parent_span_ids() -> Non
         {
             "timestamp": [600, 600, 700, 700, 800, 800, 900, 900, 1_000, 1_000, 1_100, 1_100],
             "trace_id": ["t1", "t1", "t2", "t2", "t3", "t3", "t4", "t4", "t5", "t5", "t6", "t6"],
-            "span_id": ["root", "child", "root", "child", "root", "child", "root", "child", "root", "child", "root", "child"],
-            "parent_span_id": ["", "root", "", "root", "", "root", "", "root", "", "root", "", "root"],
-            "service": ["Gateway", "Checkout", "Gateway", "Checkout", "Gateway", "Checkout", "Gateway", "Checkout", "Gateway", "Checkout", "Gateway", "Checkout"],
+            "span_id": [
+                "root",
+                "child",
+                "root",
+                "child",
+                "root",
+                "child",
+                "root",
+                "child",
+                "root",
+                "child",
+                "root",
+                "child",
+            ],
+            "parent_span_id": [
+                "",
+                "root",
+                "",
+                "root",
+                "",
+                "root",
+                "",
+                "root",
+                "",
+                "root",
+                "",
+                "root",
+            ],
+            "service": [
+                "Gateway",
+                "Checkout",
+                "Gateway",
+                "Checkout",
+                "Gateway",
+                "Checkout",
+                "Gateway",
+                "Checkout",
+                "Gateway",
+                "Checkout",
+                "Gateway",
+                "Checkout",
+            ],
             "duration": [10, 5, 10, 5, 10, 5, 30, 25, 31, 26, 32, 27],
         }
     )

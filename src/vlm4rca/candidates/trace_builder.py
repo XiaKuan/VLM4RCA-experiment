@@ -46,7 +46,9 @@ def _choose_column(columns: list[str], candidates: tuple[str, ...]) -> str | Non
 def _detect_columns(frame: pd.DataFrame) -> TraceColumns | None:
     columns = list(frame.columns)
     timestamp = _choose_column(columns, ("timestamp", "time", "start_time", "starttime"))
-    service = _choose_column(columns, ("service", "service_name", "servicename", "process_serviceName"))
+    service = _choose_column(
+        columns, ("service", "service_name", "servicename", "process_serviceName")
+    )
     duration = _choose_column(columns, ("duration", "duration_ms", "elapsed", "span_duration"))
     if timestamp is None or service is None or duration is None:
         return None
@@ -85,10 +87,7 @@ def _score_duration_shift(
 ) -> tuple[float, float, float, int, int]:
     baseline_values = _finite_values(baseline)
     incident_values = _finite_values(incident)
-    if (
-        baseline_values.size < MIN_POINTS_PER_WINDOW
-        or incident_values.size < MIN_POINTS_PER_WINDOW
-    ):
+    if baseline_values.size < MIN_POINTS_PER_WINDOW or incident_values.size < MIN_POINTS_PER_WINDOW:
         return (
             0.0,
             0.0,
@@ -116,12 +115,8 @@ def _window_masks(
     frame: pd.DataFrame, timestamp_column: str, windows: IncidentWindows
 ) -> tuple[pd.Series, pd.Series]:
     timestamps = pd.to_numeric(frame[timestamp_column], errors="coerce")
-    baseline_mask = (timestamps >= windows.baseline_start) & (
-        timestamps < windows.baseline_end
-    )
-    incident_mask = (timestamps >= windows.incident_start) & (
-        timestamps < windows.incident_end
-    )
+    baseline_mask = (timestamps >= windows.baseline_start) & (timestamps < windows.baseline_end)
+    incident_mask = (timestamps >= windows.incident_start) & (timestamps < windows.incident_end)
     return baseline_mask, incident_mask
 
 
@@ -137,14 +132,10 @@ def _build_service_candidates(
         canonical = canonicalize_component(str(raw_service))
         if not canonical:
             continue
-        baseline = group.loc[
-            baseline_mask.reindex(group.index, fill_value=False), columns.duration
-        ]
-        incident = group.loc[
-            incident_mask.reindex(group.index, fill_value=False), columns.duration
-        ]
-        score, baseline_p95, incident_p95, baseline_points, incident_points = (
-            _score_duration_shift(baseline, incident)
+        baseline = group.loc[baseline_mask.reindex(group.index, fill_value=False), columns.duration]
+        incident = group.loc[incident_mask.reindex(group.index, fill_value=False), columns.duration]
+        score, baseline_p95, incident_p95, baseline_points, incident_points = _score_duration_shift(
+            baseline, incident
         )
         if score <= 0.0:
             continue
@@ -221,10 +212,7 @@ def _rank_shadow_edges(
     edges: list[ShadowEdgeCandidate],
 ) -> list[ShadowEdgeCandidate]:
     ordered = sorted(edges, key=lambda edge: (-edge.source_score, edge.caller, edge.callee))
-    return [
-        edge.model_copy(update={"rank": rank})
-        for rank, edge in enumerate(ordered, start=1)
-    ]
+    return [edge.model_copy(update={"rank": rank}) for rank, edge in enumerate(ordered, start=1)]
 
 
 def _build_edge_candidates(
@@ -240,21 +228,15 @@ def _build_edge_candidates(
     baseline_mask, incident_mask = _window_masks(edges, "timestamp", windows)
     projected: list[SourceCandidate] = []
     shadow_edges: list[ShadowEdgeCandidate] = []
-    for (raw_caller, raw_callee), group in edges.groupby(
-        ["caller", "callee"], dropna=True
-    ):
+    for (raw_caller, raw_callee), group in edges.groupby(["caller", "callee"], dropna=True):
         caller = canonicalize_component(str(raw_caller))
         callee = canonicalize_component(str(raw_callee))
         if not caller or not callee or caller == callee:
             continue
-        baseline = group.loc[
-            baseline_mask.reindex(group.index, fill_value=False), "duration"
-        ]
-        incident = group.loc[
-            incident_mask.reindex(group.index, fill_value=False), "duration"
-        ]
-        score, baseline_p95, incident_p95, baseline_points, incident_points = (
-            _score_duration_shift(baseline, incident)
+        baseline = group.loc[baseline_mask.reindex(group.index, fill_value=False), "duration"]
+        incident = group.loc[incident_mask.reindex(group.index, fill_value=False), "duration"]
+        score, baseline_p95, incident_p95, baseline_points, incident_points = _score_duration_shift(
+            baseline, incident
         )
         if score <= 0.0:
             continue
@@ -288,12 +270,8 @@ def _build_edge_candidates(
                     source="trace",
                     source_bucket="trace_edge_projected_service",
                     score=round(score * EDGE_PROJECTION_DECAY, 6),
-                    evidence_summary=[
-                        f"projected from {edge_key}: {summary}"
-                    ],
-                    source_refs=[
-                        f"trace_edge:{caller}->{callee}:projected_service:{service}"
-                    ],
+                    evidence_summary=[f"projected from {edge_key}: {summary}"],
+                    source_refs=[f"trace_edge:{caller}->{callee}:projected_service:{service}"],
                     projection_from_edge=edge_key,
                 )
             )
@@ -323,9 +301,7 @@ def build_trace_candidates_from_dataframe(
     frame = frame.dropna(subset=[columns.timestamp, columns.duration, columns.service])
 
     service_candidates = _build_service_candidates(case_id, frame, columns, windows)
-    projected_candidates, shadow_edges = _build_edge_candidates(
-        case_id, frame, columns, windows
-    )
+    projected_candidates, shadow_edges = _build_edge_candidates(case_id, frame, columns, windows)
     return TraceBuildResult(
         case_id=case_id,
         source_candidates=service_candidates + projected_candidates,

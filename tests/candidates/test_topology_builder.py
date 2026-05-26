@@ -47,7 +47,11 @@ def _edge(rank: int, caller: str, callee: str, score: float = 1.0) -> ShadowEdge
 
 def test_topology_edges_from_shadow_edges_are_deduped_and_sorted() -> None:
     edges = topology_edges_from_shadow_edges(
-        [_edge(2, "gateway", "checkout"), _edge(1, "gateway", "checkout"), _edge(3, "checkout", "payment")]
+        [
+            _edge(2, "gateway", "checkout"),
+            _edge(1, "gateway", "checkout"),
+            _edge(3, "checkout", "payment"),
+        ]
     )
 
     assert edges == [("checkout", "payment"), ("gateway", "checkout")]
@@ -55,7 +59,9 @@ def test_topology_edges_from_shadow_edges_are_deduped_and_sorted() -> None:
 
 def test_load_static_topology_edges_reads_source_target_csv(tmp_path: Path) -> None:
     path = tmp_path / "topology.csv"
-    pd.DataFrame({"source": ["Gateway", "Checkout"], "target": ["Checkout", "Payment"]}).to_csv(path, index=False)
+    pd.DataFrame({"source": ["Gateway", "Checkout"], "target": ["Checkout", "Payment"]}).to_csv(
+        path, index=False
+    )
 
     edges = load_static_topology_edges(path)
 
@@ -70,7 +76,9 @@ def test_expand_topology_candidates_adds_one_hop_neighbors_with_reasons() -> Non
         "case_001",
         seeds,
         edges,
-        config=TopologyExpansionConfig(max_neighbors_per_candidate=2, max_total_topology_candidates=5),
+        config=TopologyExpansionConfig(
+            max_neighbors_per_candidate=2, max_total_topology_candidates=5
+        ),
     )
 
     assert [candidate.canonical_target for candidate in candidates] == ["gateway", "payment"]
@@ -94,7 +102,9 @@ def test_expand_topology_candidates_respects_global_cap_and_skips_existing_seeds
         "case_001",
         seeds,
         edges,
-        config=TopologyExpansionConfig(max_neighbors_per_candidate=4, max_total_topology_candidates=3),
+        config=TopologyExpansionConfig(
+            max_neighbors_per_candidate=4, max_total_topology_candidates=3
+        ),
     )
 
     assert len(candidates) == 3

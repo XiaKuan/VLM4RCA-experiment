@@ -62,8 +62,12 @@ def build_log_candidates_from_dataframe(
     keywords: tuple[str, ...] = DEFAULT_LOG_KEYWORDS,
 ) -> LogBuildResult:
     timestamp_column = _choose_column(list(logs.columns), ("timestamp", "time", "ts"))
-    service_column = _choose_column(list(logs.columns), ("service", "service_name", "component", "pod"))
-    message_column = _choose_column(list(logs.columns), ("message", "msg", "body", "content", "log"))
+    service_column = _choose_column(
+        list(logs.columns), ("service", "service_name", "component", "pod")
+    )
+    message_column = _choose_column(
+        list(logs.columns), ("message", "msg", "body", "content", "log")
+    )
     if timestamp_column is None or service_column is None or message_column is None:
         return LogBuildResult(
             case_id=case_id,
@@ -119,13 +123,17 @@ def build_log_candidates_from_dataframe(
                 source_bucket="log",
                 score=score,
                 evidence_summary=[f"keyword_rate_delta {evidence}"],
-                source_refs=[f"log_keyword:{canonical}:{keyword}" for keyword, _delta in top_keywords],
+                source_refs=[
+                    f"log_keyword:{canonical}:{keyword}" for keyword, _delta in top_keywords
+                ],
             )
         )
 
     return LogBuildResult(
         case_id=case_id,
-        source_candidates=sorted(candidates, key=lambda candidate: (-candidate.score, candidate.canonical_target)),
+        source_candidates=sorted(
+            candidates, key=lambda candidate: (-candidate.score, candidate.canonical_target)
+        ),
         warnings=[],
     )
 
