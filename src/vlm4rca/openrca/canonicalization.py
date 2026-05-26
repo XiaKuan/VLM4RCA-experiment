@@ -24,7 +24,11 @@ def canonicalize_component(raw: str) -> str:
 
 def strip_resource_suffix(canonical_name: str) -> str:
     parts = canonical_name.split("-")
-    if len(parts) >= 3 and _HASH_SEGMENT_RE.fullmatch(parts[-2]) and _HASH_SEGMENT_RE.fullmatch(parts[-1]):
+    if (
+        len(parts) >= 3
+        and _HASH_SEGMENT_RE.fullmatch(parts[-2])
+        and _HASH_SEGMENT_RE.fullmatch(parts[-1])
+    ):
         return "-".join(parts[:-2])
     if len(parts) >= 2 and _ORDINAL_RE.fullmatch(parts[-1]):
         return "-".join(parts[:-1])
@@ -32,7 +36,9 @@ def strip_resource_suffix(canonical_name: str) -> str:
 
 
 def map_component_name(raw_ground_truth: str, known_components: list[str]) -> GroundTruthMapping:
-    canonical_known = {canonicalize_component(component): component for component in known_components}
+    canonical_known = {
+        canonicalize_component(component): component for component in known_components
+    }
     canonical_raw = canonicalize_component(raw_ground_truth)
 
     if canonical_raw in canonical_known:

@@ -14,8 +14,12 @@ def load_case_manifest(path: Path) -> CaseManifest:
         raise ValueError(f"Manifest must be a YAML mapping: {path}")
 
     manifest = CaseManifest.model_validate(payload)
-    case_ids = [case.case_id for case in manifest.cases]
-    duplicates = sorted({case_id for case_id in case_ids if case_ids.count(case_id) > 1})
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for case in manifest.cases:
+        if case.case_id in seen:
+            duplicates.add(case.case_id)
+        seen.add(case.case_id)
     if duplicates:
         joined = ", ".join(duplicates)
         raise ValueError(f"Duplicate case_id values in manifest: {joined}")

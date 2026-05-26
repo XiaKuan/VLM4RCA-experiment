@@ -17,7 +17,10 @@ def evaluate_component_recall_at_k(
 
     for sidecar in sidecars:
         targets = [mapping.mapped_component for mapping in sidecar.gt_mapping]
-        candidates = [canonicalize_component(candidate) for candidate in candidates_by_case.get(sidecar.case_id, [])]
+        candidates = [
+            canonicalize_component(candidate)
+            for candidate in candidates_by_case.get(sidecar.case_id, [])
+        ]
         hit_at_k: dict[str, bool] = {}
         hit_targets_for_case: set[str] = set()
 
@@ -42,8 +45,7 @@ def evaluate_component_recall_at_k(
 
     denominator = len(sidecars)
     recall = {
-        str(k): (hit_counts[str(k)] / denominator if denominator else 0.0)
-        for k in ordered_ks
+        str(k): (hit_counts[str(k)] / denominator if denominator else 0.0) for k in ordered_ks
     }
     return RecallAtKSummary(
         n_cases=denominator,

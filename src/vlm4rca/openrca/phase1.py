@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from vlm4rca.evaluation.recall import evaluate_component_recall_at_k
-from vlm4rca.openrca.adapter import OpenRCABankAdapter
+from vlm4rca.openrca.adapter import OpenRCAAdapter, OpenRCABankAdapter
 from vlm4rca.openrca.ground_truth import build_ground_truth_mappings, extract_raw_ground_truth
 from vlm4rca.openrca.manifest import load_case_manifest, manifest_to_jsonable
 from vlm4rca.openrca.modality import detect_modality_availability
@@ -15,7 +15,7 @@ from vlm4rca.openrca.windows import extract_incident_windows
 
 
 def build_phase1_sidecars(
-    adapter: OpenRCABankAdapter,
+    adapter: OpenRCAAdapter,
     manifest: CaseManifest,
 ) -> list[Phase1CaseSidecar]:
     available_case_ids = set(adapter.list_case_ids())
@@ -23,7 +23,9 @@ def build_phase1_sidecars(
 
     for manifest_case in manifest.cases:
         if manifest_case.case_id not in available_case_ids:
-            raise FileNotFoundError(f"Manifest case_id is not present in OpenRCA-Bank cases: {manifest_case.case_id}")
+            raise FileNotFoundError(
+                f"Manifest case_id is not present in OpenRCA-Bank cases: {manifest_case.case_id}"
+            )
 
         meta = adapter.load_case_meta(manifest_case.case_id)
         sidecars.append(
@@ -89,7 +91,9 @@ def write_phase1_outputs(
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build OpenRCA Phase 1 data and evaluation sidecars.")
+    parser = argparse.ArgumentParser(
+        description="Build OpenRCA Phase 1 data and evaluation sidecars."
+    )
     parser.add_argument("--manifest", type=Path, default=Path("configs/openrca_pilot15.yaml"))
     parser.add_argument("--data-root", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/openrca_phase1_pilot15"))

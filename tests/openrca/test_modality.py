@@ -6,9 +6,13 @@ from vlm4rca.openrca.modality import detect_modality_availability
 
 def _write_case_files(case_dir: Path, *, traces: bool = True, topology: bool = False) -> None:
     case_dir.mkdir(parents=True)
-    (case_dir / "case_meta.json").write_text('{"case_id": "case_1", "inject_time": 1000}', encoding="utf-8")
+    (case_dir / "case_meta.json").write_text(
+        '{"case_id": "case_1", "inject_time": 1000}', encoding="utf-8"
+    )
     (case_dir / "metrics.csv").write_text("timestamp,cpu\n1,2\n", encoding="utf-8")
-    (case_dir / "logs.csv").write_text("time,timestamp,service,log_name,message\n1,1,a,app,ok\n", encoding="utf-8")
+    (case_dir / "logs.csv").write_text(
+        "time,timestamp,service,log_name,message\n1,1,a,app,ok\n", encoding="utf-8"
+    )
     if traces:
         (case_dir / "traces.csv").write_text(
             "time,timestamp,service,trace_id,span_id,parent_span_id,duration\n1,1,a,t,s,p,2\n",

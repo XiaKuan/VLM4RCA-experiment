@@ -34,7 +34,9 @@ def extract_incident_windows(
             f"context_start {int(case_meta['context_start'])} is after baseline_start {baseline_start}"
         )
     if "context_end" in case_meta and int(case_meta["context_end"]) < incident_end:
-        warnings.append(f"context_end {int(case_meta['context_end'])} is before incident_end {incident_end}")
+        warnings.append(
+            f"context_end {int(case_meta['context_end'])} is before incident_end {incident_end}"
+        )
 
     return IncidentWindows(
         inject_time=inject_time,

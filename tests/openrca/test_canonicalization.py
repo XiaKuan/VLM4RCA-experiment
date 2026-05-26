@@ -1,6 +1,11 @@
 from vlm4rca.openrca.canonicalization import canonicalize_component, map_component_name
 
 
+def test_canonicalize_empty_string_returns_empty() -> None:
+    assert canonicalize_component("") == ""
+    assert canonicalize_component("  ") == ""
+
+
 def test_canonicalize_component_normalizes_case_underscore_and_prefix() -> None:
     assert canonicalize_component("pod/Checkout_Service") == "checkout-service"
     assert canonicalize_component(" service:Tomcat01 ") == "tomcat01"

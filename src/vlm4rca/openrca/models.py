@@ -16,19 +16,19 @@ MappingType = Literal[
 ]
 
 
-class ManifestCase(BaseModel):
+class ManifestCase(BaseModel, frozen=True):
     case_id: str
     case_group: CaseGroup
     selection_reason: str
 
 
-class CaseManifest(BaseModel):
+class CaseManifest(BaseModel, frozen=True):
     dataset: str
     data_root: str
     cases: list[ManifestCase]
 
 
-class IncidentWindows(BaseModel):
+class IncidentWindows(BaseModel, frozen=True):
     inject_time: int
     baseline_start: int
     baseline_end: int
@@ -39,11 +39,13 @@ class IncidentWindows(BaseModel):
     baseline_window_seconds: int
     boundary_rule: str = "[start, end)"
     timezone: str = "UTC"
-    sampling_interval_assumption: str = "epoch seconds; telemetry timestamps are interpreted as UTC seconds"
+    sampling_interval_assumption: str = (
+        "epoch seconds; telemetry timestamps are interpreted as UTC seconds"
+    )
     warnings: list[str] = Field(default_factory=list)
 
 
-class ModalityAvailability(BaseModel):
+class ModalityAvailability(BaseModel, frozen=True):
     metrics_available: bool
     traces_available: bool
     logs_available: bool
@@ -52,7 +54,7 @@ class ModalityAvailability(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class GroundTruthMapping(BaseModel):
+class GroundTruthMapping(BaseModel, frozen=True):
     raw_ground_truth: str
     mapped_component: str
     mapping_type: MappingType
@@ -60,7 +62,7 @@ class GroundTruthMapping(BaseModel):
     source: str
 
 
-class Phase1CaseSidecar(BaseModel):
+class Phase1CaseSidecar(BaseModel, frozen=True):
     case_id: str
     case_group: CaseGroup
     task_index: str | None = None
@@ -72,14 +74,14 @@ class Phase1CaseSidecar(BaseModel):
     gt_mapping: list[GroundTruthMapping]
 
 
-class RecallCaseResult(BaseModel):
+class RecallCaseResult(BaseModel, frozen=True):
     case_id: str
     hit_at_k: dict[str, bool]
     hit_targets: list[str]
     missed_targets: list[str]
 
 
-class RecallAtKSummary(BaseModel):
+class RecallAtKSummary(BaseModel, frozen=True):
     n_cases: int
     ks: list[int]
     component_recall_at_k: dict[str, float]

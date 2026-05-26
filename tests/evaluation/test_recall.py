@@ -66,3 +66,15 @@ def test_candidate_rankings_can_hit_at_larger_k() -> None:
 
     assert summary.component_recall_at_k == {"1": 0.0, "3": 1.0}
     assert summary.case_results[0].hit_targets == ["tomcat01"]
+
+
+def test_empty_sidecars_returns_zero_cases() -> None:
+    summary = evaluate_component_recall_at_k(
+        [],
+        candidates_by_case={},
+        ks=[3, 5],
+    )
+
+    assert summary.n_cases == 0
+    assert summary.component_recall_at_k == {"3": 0.0, "5": 0.0}
+    assert summary.case_results == []

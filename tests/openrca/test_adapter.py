@@ -13,7 +13,9 @@ def _write_case(root: Path, case_id: str, *, include_logs: bool = True) -> None:
                 "case_id": case_id,
                 "task_index": "task_3",
                 "inject_time": 1000,
-                "matched_faults": [{"component": "Tomcat01", "reason": "network latency", "timestamp": 1000}],
+                "matched_faults": [
+                    {"component": "Tomcat01", "reason": "network latency", "timestamp": 1000}
+                ],
                 "system_components": ["Tomcat01"],
                 "evidence_components": ["Tomcat01"],
             }

@@ -19,7 +19,9 @@ def _write_case(root: Path, case_id: str, component: str) -> None:
                 "inject_time": 1000,
                 "context_start": 0,
                 "context_end": 3000,
-                "matched_faults": [{"component": component, "reason": "network latency", "timestamp": 1000}],
+                "matched_faults": [
+                    {"component": component, "reason": "network latency", "timestamp": 1000}
+                ],
                 "system_components": [component],
                 "evidence_components": [component],
             }
@@ -27,7 +29,9 @@ def _write_case(root: Path, case_id: str, component: str) -> None:
         encoding="utf-8",
     )
     (case_dir / "metrics.csv").write_text("timestamp,cpu\n1,2\n", encoding="utf-8")
-    (case_dir / "logs.csv").write_text("time,timestamp,service,log_name,message\n1,1,a,app,ok\n", encoding="utf-8")
+    (case_dir / "logs.csv").write_text(
+        "time,timestamp,service,log_name,message\n1,1,a,app,ok\n", encoding="utf-8"
+    )
     (case_dir / "traces.csv").write_text(
         "time,timestamp,service,trace_id,span_id,parent_span_id,duration\n1,1,a,t,s,p,2\n",
         encoding="utf-8",
@@ -73,7 +77,9 @@ def test_write_phase1_outputs_without_candidate_or_image_files(tmp_path: Path) -
     _write_case(tmp_path / "data", "case_2", "Mysql02")
     manifest_path = tmp_path / "manifest.yaml"
     _write_manifest(manifest_path, tmp_path / "data")
-    sidecars = build_phase1_sidecars(OpenRCABankAdapter(tmp_path / "data"), load_case_manifest(manifest_path))
+    sidecars = build_phase1_sidecars(
+        OpenRCABankAdapter(tmp_path / "data"), load_case_manifest(manifest_path)
+    )
 
     output_dir = tmp_path / "outputs"
     write_phase1_outputs(sidecars, load_case_manifest(manifest_path), output_dir)
@@ -84,7 +90,9 @@ def test_write_phase1_outputs_without_candidate_or_image_files(tmp_path: Path) -
     assert (output_dir / "recall_empty_run.json").exists()
     written_paths = [path.name for path in output_dir.rglob("*") if path.is_file()]
     assert not any("candidate" in name for name in written_paths)
-    assert not any(name.endswith((".png", ".jpg", ".jpeg", ".svg", ".html")) for name in written_paths)
+    assert not any(
+        name.endswith((".png", ".jpg", ".jpeg", ".svg", ".html")) for name in written_paths
+    )
 
 
 def test_cli_main_writes_outputs(tmp_path: Path) -> None:
@@ -147,4 +155,6 @@ def test_real_pilot15_outputs_phase1_sidecars(tmp_path: Path) -> None:
 
     written_paths = [path.name for path in output_dir.rglob("*") if path.is_file()]
     assert not any("candidate" in name for name in written_paths)
-    assert not any(name.endswith((".png", ".jpg", ".jpeg", ".svg", ".html")) for name in written_paths)
+    assert not any(
+        name.endswith((".png", ".jpg", ".jpeg", ".svg", ".html")) for name in written_paths
+    )
