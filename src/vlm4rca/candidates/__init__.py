@@ -4,6 +4,12 @@ from vlm4rca.candidates.log_builder import (
     build_log_candidates_for_case,
     build_log_candidates_from_dataframe,
 )
+from vlm4rca.candidates.merge_rank import (
+    VARIANT_BUCKETS,
+    build_variant_result,
+    convert_metric_candidates_to_source_candidates,
+    update_present_in_variants,
+)
 from vlm4rca.candidates.metric_builder import (
     build_metric_candidates_for_case,
     build_metric_candidates_from_dataframe,
@@ -38,6 +44,7 @@ from vlm4rca.candidates.multisource_models import (
 )
 
 __all__ = [
+    "VARIANT_BUCKETS",
     "CandidateSource",
     "DEFAULT_LOG_KEYWORDS",
     "METRIC_CANDIDATE_BUDGET",
@@ -52,6 +59,7 @@ __all__ = [
     "SourceQuotaConfig",
     "TargetType",
     "TopologyExpansionConfig",
+    "update_present_in_variants",
     "VariantName",
     "TraceBuildResult",
     "expand_topology_candidates",
@@ -60,8 +68,10 @@ __all__ = [
     "LogBuildResult",
     "build_log_candidates_for_case",
     "build_log_candidates_from_dataframe",
+    "build_variant_result",
     "build_metric_candidates_for_case",
     "build_metric_candidates_from_dataframe",
     "build_trace_candidates_for_case",
     "build_trace_candidates_from_dataframe",
+    "convert_metric_candidates_to_source_candidates",
 ]
