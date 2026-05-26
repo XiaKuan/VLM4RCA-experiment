@@ -23,12 +23,12 @@ The existing Task 3 design remains the later reason-localization design. This Ph
 
 Phase 0 tests one focused research question:
 
-> Under a fixed rendering budget, does multi-source candidate retrieval bring true root-cause-related components/services into the downstream VLM/LLM stage more reliably than a metric-only statistical gate?
+> Under a fixed candidate budget and bounded rendering budget, does multi-source candidate retrieval bring true root-cause-related components/services into the downstream VLM/LLM stage more reliably than a metric-only statistical gate?
 
 The MVP verifies three hypotheses:
 
 1. `H1 candidate recall`: compare `Metric-only`, `Metric + Trace`, `Metric + Trace + Log`, and `Metric + Trace + Log + Topology` on `Recall@K`. The focus is whether multi-source retrieval improves the chance that the true root-cause-related component/service enters the candidate pool, especially in soft latency and dependency-related cases. The result is not assumed to be monotonic at every K.
-2. `H2 budget control`: show that multi-source retrieval does not imply drawing all telemetry. All candidate-source variants share the same default rendering budget, so any recall improvement cannot be attributed to simply drawing more images.
+2. `H2 budget control`: show that multi-source retrieval does not imply drawing all telemetry. All candidate-source variants share the same candidate budget, so `Recall@8` is comparable across variants. Rendering-budget auditing is performed on the Full variant only. If other variants are rendered for qualitative comparison, they must use the same cap and be reported separately.
 3. `H3-lite VLM evidence sanity`: on a small selected sample, verify that diagnostic panels can produce non-redundant candidate-level visual evidence. In Phase 0, the VLM is a diagnostic panel reader and visual evidence extractor, not a root-cause judge.
 
 Phase 0 does not claim end-to-end RCA success.
@@ -73,7 +73,10 @@ modality_availability:
   traces_available: true
   logs_available: false
   topology_available: true
+  topology_source: trace_derived
 ```
+
+By default, topology is trace-derived. Therefore, `topology_available=true` requires `traces_available=true` unless a static topology file is provided by the adapter. Valid `topology_source` values are `trace_derived`, `static_topology`, and `unavailable`.
 
 Reports separate two views:
 
@@ -91,7 +94,7 @@ The main experiment uses incremental ablation, not a full source-combination gri
 | `M+T+L` | Metric + Trace + Log | Measure log contribution for timeout, retry, and error cases |
 | `M+T+L+Topo` | Metric + Trace + Log + Topology | Measure one-hop topology expansion contribution |
 
-The main report includes `Recall@3`, `Recall@5`, and `Recall@8`. `Recall@8` is the most important K because it matches the final candidate and rendering budget.
+The main report includes `Recall@3`, `Recall@5`, and `Recall@8`. `Recall@8` is the most important K because it matches the final candidate budget and the Full-variant rendering budget.
 
 For every case, the report records:
 
@@ -139,7 +142,8 @@ The implementation must record boundary rules, timezone handling, sampling inter
 The canonical candidate object is:
 
 ```yaml
-candidate_id: cand:{case_id}:{variant}:{rank}:{target_type}:{canonical_target}
+candidate_key: service:checkout-service
+variant_candidate_id: cand:{case_id}:{variant}:{rank}:{target_type}:{canonical_target}
 target_type: service | edge | resource
 canonical_target: checkout-service
 raw_target: checkout_service
@@ -158,6 +162,10 @@ evidence_summary:
 rank: 1
 selected_for_rendering: true
 ```
+
+`candidate_key` is stable across variants and is used for cross-variant merge, `present_in_variants`, `first_hit_source`, and `new_hit_source` analysis. `variant_candidate_id` is variant-scoped and rank-scoped; it is used for reports, rendering manifests, and VLM evidence references.
+
+`introduced_by` means the earliest source in the incremental ablation chain that first introduces this canonical candidate. `sources` lists all evidence sources that support the candidate after merging.
 
 `evidence_summary` is used for cheap candidate analysis and non-VLM reports. It must not be embedded inside image manifests given to the VLM.
 
@@ -205,11 +213,17 @@ backoff
 circuit breaker
 ```
 
-For each service, compute incident keyword count minus baseline keyword count and output service candidates.
+For each service, compute:
+
+```text
+keyword_rate_delta = incident_keyword_count_per_min - baseline_keyword_count_per_min
+```
+
+If the effective baseline and incident durations are identical and complete, this is equivalent to a count delta scaled by a constant. If effective window duration differs due to missing data, rate-normalized deltas are required.
 
 ### 9.4 Topology Expansion
 
-Topology is built from trace-derived caller/callee edges. It expands existing service candidates by one hop:
+By default, topology is built from trace-derived caller/callee edges. If an adapter provides a static topology file, the same expansion rules apply and `topology_source=static_topology`. It expands existing service candidates by one hop:
 
 - upstream neighbors
 - downstream neighbors
@@ -244,17 +258,19 @@ Quotas are soft quotas. They preserve source diversity before global top-8 trunc
 Phase 0 uses one fixed deterministic ranking algorithm for all case groups:
 
 1. Build ranked candidate lists for each enabled source.
-2. Add protected candidates from each enabled source up to its soft quota.
-3. Merge candidates with the same canonical service.
-4. Merge duplicate edge candidates separately into the shadow edge pool.
-5. Fill remaining candidate slots from all enabled-source candidate lists by global normalized score until `max_final_candidates=8` or no candidates remain.
-6. Aggregate source scores into a normalized candidate score.
-7. Sort by:
+2. Normalize scores within each source.
+3. Mark candidates as protected according to the enabled source soft quotas.
+4. Merge candidates with the same canonical service. A merged candidate is protected if any source-specific candidate merged into it was protected.
+5. Merge duplicate edge candidates separately into the shadow edge pool.
+6. Aggregate merged source scores into one normalized candidate score.
+7. Partition merged service/resource candidates into protected and non-protected groups.
+8. Sort protected candidates and non-protected candidates separately by:
    - number of supporting sources, descending
    - aggregated normalized score, descending
    - fixed source priority, `metric > trace > log > topology`
    - canonical target name, ascending
-8. Truncate to `max_final_candidates=8`.
+9. Construct the final list by taking sorted protected candidates first, then filling remaining slots with sorted non-protected candidates.
+10. Truncate to `max_final_candidates=8`. If protected candidates alone exceed eight after merging, keep the top eight protected candidates by the same deterministic sort and omit non-protected candidates.
 
 The fixed priority avoids group-specific tuning. Source priority is a tie-break, not the primary score. In a single-source variant such as `M`, the enabled source may fill the full top-8 budget.
 
@@ -323,7 +339,7 @@ rendering_budget_upper_bound:
 
 Phase 0 main experiments use only the default budget. Under this budget, each rendered candidate gets at most one primary image. Secondary images are not used in the main experiment and are allowed only in upper-bound sensitivity analysis.
 
-Phase 0 budget auditing is defined only on the Full variant. Metric-only baseline charts may be generated during the pilot for qualitative comparison, but they must be reported separately and must not be mixed into the main rendering-efficiency statistics.
+All variants share the same candidate budget, so `Recall@8` is comparable across variants. Rendering-budget auditing is defined only on the Full variant. Metric-only or other variant charts may be generated during the pilot for qualitative comparison, but they must use the same rendering cap, be reported separately, and not be mixed into the main rendering-efficiency statistics.
 
 ## 13. Diagnostic Visualization Templates
 
@@ -368,7 +384,8 @@ The panel shows the candidate service, up to two upstream neighbors, and up to t
 Every image includes:
 
 - `case_id`
-- `candidate_id`
+- `candidate_key`
+- `variant_candidate_id`
 - canonical target
 - image type
 - inject-time vertical line where applicable
@@ -412,6 +429,8 @@ The VLM sanity check runs on 10-15 selected cases, preferably:
 - soft latency or dependency-related cases
 - cases where Trace, Log, or Topology is the `first_hit_source`
 
+The VLM sanity subset is an enriched diagnostic subset, not an unbiased estimate of VLM performance over the full MVP set. Optionally include 3-5 randomly sampled pilot cases as a sanity-control subset and report them separately.
+
 The VLM reads images and non-explanatory manifests only.
 
 VLM input:
@@ -419,18 +438,20 @@ VLM input:
 ```yaml
 case_id: case_001
 time_window_spec:
+  t0: inject_time
   baseline_window: T0-40min to T0-10min
   incident_window: T0-10min to T0+20min
 images:
   - image_id: img_001
-    candidate_id: cand:case_001:full:1:service:gateway
+    candidate_key: service:gateway
+    variant_candidate_id: cand:case_001:full:1:service:gateway
     canonical_target: gateway
     target_type: service
     image_type: service_diagnostic_timeline
     source_refs:
       - type: metric
         id: metric:gateway:latency_p95
-allowed_candidate_ids:
+allowed_variant_candidate_ids:
   - cand:case_001:full:1:service:gateway
 allowed_image_ids:
   - img_001
@@ -451,14 +472,15 @@ The VLM does not receive:
 ```yaml
 candidate_visual_evidence:
   - evidence_id: ve:case_001:img_001:0
-    candidate_id: cand:case_001:full:1:service:gateway
+    candidate_key: service:gateway
+    variant_candidate_id: cand:case_001:full:1:service:gateway
     image_id: img_001
     image_type: service_diagnostic_timeline
     visual_facts:
       - fact_type: temporal_shift
-        observation: "Latency rises after the incident window begins."
+        observation: "Latency rises after T0."
         support_level: strong
-        time_relation: after_incident
+        time_relation_to_t0: after_t0
     supports_candidate_pattern: true
     contradicts_candidate_pattern: uncertain
     missing_evidence:
@@ -476,13 +498,15 @@ Allowed `fact_type` values:
 - `evidence_gap`
 - `readability_issue`
 
-Allowed `time_relation` values:
+Allowed `time_relation_to_t0` values:
 
-- `before_incident`
-- `at_incident`
-- `after_incident`
-- `spans_incident`
+- `before_t0`
+- `around_t0`
+- `after_t0`
+- `spans_t0`
 - `unclear`
+
+`T0` is the case `inject_time` or equivalent fault-time anchor.
 
 Allowed `readability_status` values:
 
@@ -608,7 +632,7 @@ A VLM fact is non-redundant if it describes a visual relation not explicitly pre
 | Evidence gap | `<computed>` | `<computed>` | `<observed failure mode>` |
 ```
 
-## 17. Delivery Criteria and Research-Positive Criteria
+## 17. Delivery, Budget, and Research Criteria
 
 Delivery and research support are judged separately. A complete run can be an engineering success even if the research hypothesis is not supported.
 
@@ -628,16 +652,25 @@ Delivery and research support are judged separately. A complete run can be an en
 - VLM sanity check runs on 10-15 selected cases.
 - VLM output contains no root-cause decision fields.
 
-### 17.3 Research-Positive Criteria
+### 17.3 Budget Success Criteria
 
-- `Full Recall@8 - Metric Recall@8 >= 10 percentage points`.
-- `Soft subset Full Recall@8 - Metric Recall@8 >= 15 percentage points`.
 - Average images per case is at most 8.
 - Maximum images per case is at most 8.
 - Average curves per image is at most 6.
 - Maximum VLM calls per case is at most 2.
+- Topology panels stay within `max_nodes=5` and `max_edges=6`.
+
+### 17.4 VLM Boundary Success Criteria
+
+- VLM sanity check produces schema-valid outputs for selected cases after retry handling.
+- `forbidden_field_rate` is zero after parser validation and retry handling.
+- `root_cause_leakage_rate` is zero after parser validation and retry handling.
+
+### 17.5 Research-Positive Criteria
+
+- `Full Recall@8 - Metric Recall@8 >= 10 percentage points`.
+- `Soft subset Full Recall@8 - Metric Recall@8 >= 15 percentage points`.
 - VLM sanity check shows non-redundant visual evidence in selected cases.
-- `forbidden_field_rate` and `root_cause_leakage_rate` are zero after parser validation and retry handling.
 
 ## 18. Failure Diagnosis
 
@@ -677,7 +710,7 @@ Each run writes analysis-level sidecar data:
 - case-selection manifest id
 - modality availability
 - ground-truth mapping and mapping confidence
-- candidate pools for all variants
+- candidate pools for all variants with stable `candidate_key` and variant-scoped `variant_candidate_id`
 - final top-8 candidates
 - `first_hit_source` and `new_hit_source`
 - shadow edge candidates and metrics
