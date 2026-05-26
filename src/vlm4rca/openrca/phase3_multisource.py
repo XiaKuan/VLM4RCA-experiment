@@ -302,6 +302,14 @@ def run_multisource_candidate_recall(
     shadow_summary = summarize_shadow_edges(relevant_edges_by_case, per_case_shadow_edges)
     _write_json(output_dir / "shadow_edge_metrics.json", shadow_summary)
 
+    _write_json(
+        output_dir / "shadow_edges.json",
+        {
+            case_id: [edge.model_dump(mode="json") for edge in edges]
+            for case_id, edges in sorted(per_case_shadow_edges.items())
+        },
+    )
+
     return {
         "ablation": ablation,
         "first_hit_rows": first_hit_rows,
