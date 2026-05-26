@@ -12,6 +12,7 @@ from vlm4rca.openrca.models import IncidentWindows
 
 EPSILON = 1e-9
 MIN_POINTS_PER_WINDOW = 2
+EDGE_PROJECTION_DECAY = 0.75
 
 
 @dataclass(frozen=True)
@@ -286,7 +287,7 @@ def _build_edge_candidates(
                     raw_target=str(raw_service),
                     source="trace",
                     source_bucket="trace_edge_projected_service",
-                    score=round(score * 0.75, 6),
+                    score=round(score * EDGE_PROJECTION_DECAY, 6),
                     evidence_summary=[
                         f"projected from {edge_key}: {summary}"
                     ],
