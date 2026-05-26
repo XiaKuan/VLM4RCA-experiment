@@ -2,6 +2,11 @@ from vlm4rca.candidates.metric_builder import (
     build_metric_candidates_for_case,
     build_metric_candidates_from_dataframe,
 )
+from vlm4rca.candidates.trace_builder import (
+    TraceBuildResult,
+    build_trace_candidates_for_case,
+    build_trace_candidates_from_dataframe,
+)
 from vlm4rca.candidates.models import (
     METRIC_CANDIDATE_BUDGET,
     CandidateSource,
@@ -36,6 +41,9 @@ __all__ = [
     "TargetType",
     "TopologyExpansionConfig",
     "VariantName",
+    "TraceBuildResult",
     "build_metric_candidates_for_case",
     "build_metric_candidates_from_dataframe",
+    "build_trace_candidates_for_case",
+    "build_trace_candidates_from_dataframe",
 ]
