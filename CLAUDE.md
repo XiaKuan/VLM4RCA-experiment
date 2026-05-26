@@ -27,6 +27,8 @@ uv run ruff format src/ tests/
 
 OpenRCA Bank 数据集位于 `data/OpenRCA/Bank/`：
 
+注意：`data/OpenRCA/Bank` 是指向 `/root/Project/rca/dataSet/Bank` 的符号链接。使用 `find data/OpenRCA ...` 时默认不会进入该目录；需要检查数据文件时使用 `find -L data/OpenRCA ...`，或直接访问 `data/OpenRCA/Bank/query.csv`、`data/OpenRCA/Bank/record.csv` 等具体路径。
+
 - `query.csv`：任务描述和评分标准
 - `record.csv`：根因标注（组件、原因、时间戳）
 - `cases/`：136 个故障案例，每个包含 `case_meta.json`、`metrics.csv`、`logs.csv`、`traces.csv`
@@ -43,6 +45,7 @@ OpenRCA Bank 数据集位于 `data/OpenRCA/Bank/`：
 - Python >= 3.12，使用 uv 管理依赖
 - 配置通过 YAML 文件管理，敏感信息用环境变量
 - VLM/LLM 调用使用 OpenAI API 兼容接口
+- 环境变量以及使用的API key 位于文件 .env
 
 ### 临时代码执行规范
 
